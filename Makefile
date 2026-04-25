@@ -1,16 +1,25 @@
+
 HOST_CXX = g++
 RV_CXX = riscv64-unknown-elf-g++
 
 
-test:
-	@echo "Running tests on Host..."
+SRC = src/main.cpp src/image_io.cpp
+
+
+HOST_OUT = host_canny
+RV_OUT = rv_canny
+
+
+all: host canny_rv
+
+host:
+	$(HOST_CXX) $(SRC) -o $(HOST_OUT)
 
 canny_rv:
-	@echo "Compiling for RISC-V..."
+	$(RV_CXX) $(SRC) -o $(RV_OUT)
 
-run:
-	@echo "Running on QEMU..."
+run: canny_rv
+	qemu-riscv64 $(RV_OUT)
 
 clean:
-	@echo "Cleaning up..."
-	rm -rf *.o
+	rm -f $(HOST_OUT) $(RV_OUT) images/test_image.raw
