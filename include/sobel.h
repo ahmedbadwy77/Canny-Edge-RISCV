@@ -26,11 +26,17 @@ void sobel_gradients_scalar(const PixelT* input, GradT* grad_x, GradT* grad_y, i
                 for (int kx = -1; kx <= 1; ++kx) {
                     int nx = x + kx;
                     int ny = y + ky;
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        PixelT pixel_val = input[ny * width + nx];
-                        sum_x += pixel_val * SOBEL_X[ky + 1][kx + 1];
-                        sum_y += pixel_val * SOBEL_Y[ky + 1][kx + 1];
-                    }
+                    
+                    // Clamp out-of-bounds coordinates to the image edge
+                    if (nx < 0) nx = 0;
+                    else if (nx >= width) nx = width - 1;
+                    
+                    if (ny < 0) ny = 0;
+                    else if (ny >= height) ny = height - 1;
+
+                    PixelT pixel_val = input[ny * width + nx];
+                    sum_x += pixel_val * SOBEL_X[ky + 1][kx + 1];
+                    sum_y += pixel_val * SOBEL_Y[ky + 1][kx + 1];
                 }
             }
             grad_x[y * width + x] = (GradT)sum_x;

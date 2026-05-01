@@ -1,25 +1,32 @@
-
 HOST_CXX = g++
-RV_CXX = riscv64-unknown-elf-g++
+RV_CXX   = riscv64-linux-gnu-g++
 
-
-SRC = src/main.cpp src/image_io.cpp
-
+SRC      = src/main.cpp src/image_io.cpp
+TEST_SRC = tests/test_pipeline.cpp src/image_io.cpp
 
 HOST_OUT = host_canny
-RV_OUT = rv_canny
+RV_OUT   = rv_canny
+TEST_OUT = run_tests
 
+CXXFLAGS   = -std=c++17 -Wall -Wextra
+ARCH_FLAGS = -march=rv64gcv -mabi=lp64d -static
+TEST_FLAGS = -std=c++17 -Wall -Iinclude
+TEST_LIBS  = -lgtest -lgtest_main -lpthread
 
 all: host canny_rv
 
 host:
-	$(HOST_CXX) $(SRC) -o $(HOST_OUT)
+	$(HOST_CXX) $(CXXFLAGS) -Iinclude $(SRC) -o $(HOST_OUT)
 
 canny_rv:
-	$(RV_CXX) $(SRC) -o $(RV_OUT)
+	$(RV_CXX) $(CXXFLAGS) $(ARCH_FLAGS) -Iinclude $(SRC) -o $(RV_OUT)
+
+test:
+	$(HOST_CXX) $(TEST_FLAGS) $(TEST_SRC) -o $(TEST_OUT) $(TEST_LIBS)
+	./$(TEST_OUT)
 
 run: canny_rv
 	qemu-riscv64 $(RV_OUT)
 
 clean:
-	rm -f $(HOST_OUT) $(RV_OUT) images/test_image.raw
+	rm -f $(HOST_OUT) $(RV_OUT) $(TEST_OUT) images/test_image.raw

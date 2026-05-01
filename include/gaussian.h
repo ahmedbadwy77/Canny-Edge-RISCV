@@ -21,9 +21,15 @@ void gaussian_blur_scalar(const PixelT* input, PixelT* output, int width, int he
                 for (int kx = -2; kx <= 2; ++kx) {
                     int nx = x + kx;
                     int ny = y + ky;
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        sum += input[ny * width + nx] * (KernelT)GAUSSIAN_KERNEL[ky + 2][kx + 2];
-                    }
+                    
+                    // Clamp out-of-bounds coordinates to the image edge
+                    if (nx < 0) nx = 0;
+                    else if (nx >= width) nx = width - 1;
+                    
+                    if (ny < 0) ny = 0;
+                    else if (ny >= height) ny = height - 1;
+
+                    sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
                 }
             }
             sum /= 273;
