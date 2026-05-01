@@ -3,6 +3,8 @@
 #include "../include/image_io.h"
 #include "../include/gaussian.h"
 #include "../include/sobel.h"
+#include "../include/magnitude.h"
+#include "../include/direction.h"
 
 int main() {
     int width = 256;
@@ -45,7 +47,27 @@ int main() {
     sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
     std::cout << "Sobel Gradients (Gx, Gy) calculated successfully!" << std::endl;
 
- 
+// ---------------------------------------------------------
+    // 3. Gradient Magnitude
+    // ---------------------------------------------------------
+    uint8_t* magnitude_data = (uint8_t*)aligned_alloc(32, size);
+    if (!magnitude_data) {
+        std::cerr << "Error: Memory allocation for Magnitude failed!" << std::endl;
+        return 1;
+    }
+    gradient_magnitude_scalar(grad_x, grad_y, magnitude_data, width, height, MagMethod::L1);
+    std::cout << "Gradient Magnitude calculated successfully!" << std::endl;
+
+    // ---------------------------------------------------------
+    // 4. Gradient Direction
+    // ---------------------------------------------------------
+    uint8_t* direction_data = (uint8_t*)aligned_alloc(32, size);
+    if (!direction_data) {
+        std::cerr << "Error: Memory allocation for Direction failed!" << std::endl;
+        return 1;
+    }
+    gradient_direction_scalar(grad_x, grad_y, direction_data, width, height);
+    std::cout << "Gradient Direction calculated successfully!" << std::endl; 
 
 #ifndef __riscv
     std::cout << "--- Running on HOST: Testing File I/O ---" << std::endl;
@@ -72,6 +94,9 @@ int main() {
     free(grad_y);
 
     std::cout << "Phase completed successfully!" << std::endl;
-    
+
+    free(magnitude_data);
+    free(direction_data);
+
     return 0;
 }
