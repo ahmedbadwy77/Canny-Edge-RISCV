@@ -39,4 +39,3 @@ $(OPT_FLAGS):
     $(RV_CXX) $(CXXFLAGS) $@ $(ARCH_FLAGS) -Iinclude $(SRC) -o rv_canny$@
     ls -lh rv_canny$@
     qemu-riscv64 -cpu rv64,v=true,vlen=128 ./rv_canny$@
-
