@@ -3,6 +3,7 @@
 ![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
 ![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
 ![GoogleTest](https://img.shields.io/badge/Testing-GoogleTest-green.svg)
+![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
 An optimized Canny Edge Detection pipeline designed for the **RISC-V (RV64GCV)** architecture. This project leverages **RISC-V Vector Extension (RVV)** to accelerate high-latency image processing stages.
 
