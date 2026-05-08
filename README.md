@@ -28,3 +28,19 @@ make test
 
 # Run Profiling on QEMU
 make run OPT=-O3
+
+## Phase 5: Full Pipeline Profiling (7-Stage Breakdown)
+Measured on QEMU using `-O3` optimization for a 256x256 image.
+
+| Stage              | Time (ms)   | Percentage (%) | Status              |
+|--------------------|-------------|----------------|---------------------|
+| **Gaussian Blur** | 1127.91 ms  | 49.42%         | ✅ RVV Optimized     |
+| Sobel Gradients    | 44.52 ms    | 1.95%          | 🔄 Scalar Baseline  |
+| **Magnitude** | 199.06 ms   | 8.72%          | ✅ RVV Optimized     |
+| Direction          | 102.85 ms   | 4.51%          | 🔄 Scalar Baseline  |
+| NMS                | 646.78 ms   | 28.34%         | 🔄 Scalar Baseline  |
+| Thresholding       | 98.21 ms    | 4.30%          | 🔄 Scalar Baseline  |
+| Hysteresis         | 62.83 ms    | 2.75%          | 🔄 Scalar Baseline  |
+| **Total Execution**| **2282.16 ms** | **100%** |                     |
+
+> **Note:** Gaussian Blur shows higher absolute time due to QEMU's emulation of widening instructions, but it processes vectors in parallel.
