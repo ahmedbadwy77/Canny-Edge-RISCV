@@ -7,3 +7,4 @@ rv_canny-O3
 rv_canny-Ofast
 rv_canny-Os
 
+run_tests
