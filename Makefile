@@ -1,41 +1,32 @@
+# المترجمات (Compilers)
 HOST_CXX = g++
-RV_CXX   = riscv64-linux-gnu-g++
+# المتغير ده بيسمحلك تغير الـ Optimization من بره (الافتراضي هو -O0) [cite: 1003-1005]
+OPT ?= -O0
+RV_CXX = riscv64-unknown-elf-g++ $(OPT)
 
-SRC      = src/main.cpp src/image_io.cpp
-TEST_SRC = tests/test_pipeline.cpp src/image_io.cpp
+# ملفات الكود الأساسية
+SRC = src/main.cpp src/image_io.cpp
 
+# أسماء الملفات الناتجة
 HOST_OUT = host_canny
-RV_OUT   = rv_canny
-TEST_OUT = run_tests
+RV_OUT = rv_canny
 
-CXXFLAGS   = -std=c++17 -Wall -Wextra -fopt-info-vec-all
-ARCH_FLAGS = -march=rv64gcv -mabi=lp64d -static
-TEST_FLAGS = -std=c++17 -Wall -Iinclude
-TEST_LIBS  = -lgtest -lgtest_main -lpthread
-
+# الأهداف (Targets)
 all: host canny_rv
 
 host:
-	$(HOST_CXX) $(CXXFLAGS) -Iinclude $(SRC) -o $(HOST_OUT)
+	$(HOST_CXX) $(SRC) -o $(HOST_OUT)
 
 canny_rv:
-	$(RV_CXX) $(CXXFLAGS) $(ARCH_FLAGS) -Iinclude $(SRC) -o $(RV_OUT)
-
-test:
-	$(HOST_CXX) $(TEST_FLAGS) $(TEST_SRC) -o $(TEST_OUT) $(TEST_LIBS)
-	./$(TEST_OUT)
+	$(RV_CXX) $(SRC) -o $(RV_OUT)
 
 run: canny_rv
 	qemu-riscv64 $(RV_OUT)
 
+# هدف تشغيل الاختبارات باستخدام GoogleTest [cite: 798-810]
+test:
+	$(HOST_CXX) tests/test_pipeline.cpp src/image_io.cpp -o run_tests -lgtest -lgtest_main -pthread
+	./run_tests
+
 clean:
-	rm -f $(HOST_OUT) $(RV_OUT) $(TEST_OUT) images/test_image.raw rv_canny-O* rv_canny-Os
-
-OPT_FLAGS = -O0 -O2 -O3 -Os -Ofast
-
-sweep: $(OPT_FLAGS)
-
-$(OPT_FLAGS):
-	$(RV_CXX) $(CXXFLAGS) $@ $(ARCH_FLAGS) -Iinclude $(SRC) -o rv_canny$@
-	ls -lh rv_canny$@
-	qemu-riscv64 -cpu rv64,v=true,vlen=128 ./rv_canny$@
+	rm -f $(HOST_OUT) $(RV_OUT) run_tests images/*.raw
