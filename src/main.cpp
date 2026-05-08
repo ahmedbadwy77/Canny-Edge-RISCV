@@ -1,17 +1,12 @@
 #include <iostream>
 #include <cstdlib>
-#include <ctime>   
 #include <iomanip>
+#include <chrono> 
 #include "../include/image_io.h"
 #include "../include/gaussian.h"
 #include "../include/sobel.h"
 #include "../include/magnitude.h"
 #include "../include/direction.h"
-
-// Helper function to calculate time difference in milliseconds
-double get_time_diff_ms(struct timespec start, struct timespec end) {
-    return (end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0;
-}
 
 int main() {
     int width = 256;
@@ -30,36 +25,34 @@ int main() {
     uint8_t* magnitude_data = (uint8_t*)aligned_alloc(32, size);
     uint8_t* direction_data = (uint8_t*)aligned_alloc(32, size);
 
-    // --- PHASE 5: PROFILING STOPWATCHES ---
-    struct timespec start, end;
+    // --- PHASE 5: PROFILING (MODERN C++ CHRONO) ---
     double time_gaussian = 0.0, time_sobel = 0.0, time_magnitude = 0.0, time_direction = 0.0;
     int iterations = 100;
 
     for (int it = 0; it < iterations; ++it) {
-        
         // 1. Measure Gaussian Blur
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        auto start = std::chrono::high_resolution_clock::now();
         gaussian_blur_scalar(dummy_data, blurred_data, width, height);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        time_gaussian += get_time_diff_ms(start, end);
+        auto end = std::chrono::high_resolution_clock::now();
+        time_gaussian += std::chrono::duration<double, std::milli>(end - start).count();
 
         // 2. Measure Sobel Gradients
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        start = std::chrono::high_resolution_clock::now();
         sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        time_sobel += get_time_diff_ms(start, end);
+        end = std::chrono::high_resolution_clock::now();
+        time_sobel += std::chrono::duration<double, std::milli>(end - start).count();
 
         // 3. Measure Magnitude
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        start = std::chrono::high_resolution_clock::now();
         gradient_magnitude_scalar(grad_x, grad_y, magnitude_data, width, height, MagMethod::L1);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        time_magnitude += get_time_diff_ms(start, end);
+        end = std::chrono::high_resolution_clock::now();
+        time_magnitude += std::chrono::duration<double, std::milli>(end - start).count();
 
         // 4. Measure Direction
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        start = std::chrono::high_resolution_clock::now();
         gradient_direction_scalar(grad_x, grad_y, direction_data, width, height);
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        time_direction += get_time_diff_ms(start, end);
+        end = std::chrono::high_resolution_clock::now();
+        time_direction += std::chrono::duration<double, std::milli>(end - start).count();
     }
 
     // --- Calculate Percentages ---
