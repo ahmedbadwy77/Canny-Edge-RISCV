@@ -35,8 +35,12 @@ int main() {
     int iterations = 100;
 
     for (int it = 0; it < iterations; ++it) {
-        auto s = std::chrono::high_resolution_clock::now();
+      auto s = std::chrono::high_resolution_clock::now();
+#ifdef __riscv
+        gaussian_blur_rvv(dummy_data, blurred_data, width, height);
+#else
         gaussian_blur_scalar(dummy_data, blurred_data, width, height);
+#endif
         auto e = std::chrono::high_resolution_clock::now();
         t_gauss += std::chrono::duration<double, std::milli>(e - s).count();
 
