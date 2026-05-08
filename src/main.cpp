@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
-#include <ctime>   // <-- added for timing
+#include <iomanip>
+#include <chrono> 
 #include "../include/image_io.h"
 #include "../include/gaussian.h"
 #include "../include/sobel.h"
@@ -10,14 +11,10 @@
 int main() {
     int width = 256;
     int height = 256;
-    const char* filename = "images/test_image.raw";
     size_t size = width * height;
 
+    // --- Memory Allocation ---
     uint8_t* dummy_data = (uint8_t*)aligned_alloc(32, size);
-    if (!dummy_data) {
-        std::cerr << "Error: Memory allocation failed!" << std::endl;
-        return 1;
-    }
     for (size_t i = 0; i < size; ++i) {
         dummy_data[i] = i % 256;
     }
@@ -28,42 +25,53 @@ int main() {
     uint8_t* magnitude_data = (uint8_t*)aligned_alloc(32, size);
     uint8_t* direction_data = (uint8_t*)aligned_alloc(32, size);
 
-    if (!blurred_data || !grad_x || !grad_y || !magnitude_data || !direction_data) {
-        std::cerr << "Error: Memory allocation failed!" << std::endl;
-        return 1;
-    }
-
-    // ---------------- TIMING HARNESS ----------------
-    timespec start, end;
+    // --- PHASE 5: PROFILING (MODERN C++ CHRONO) ---
+    double time_gaussian = 0.0, time_sobel = 0.0, time_magnitude = 0.0, time_direction = 0.0;
     int iterations = 100;
-    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (int it = 0; it < iterations; ++it) {
+        // 1. Measure Gaussian Blur
+        auto start = std::chrono::high_resolution_clock::now();
         gaussian_blur_scalar(dummy_data, blurred_data, width, height);
+        auto end = std::chrono::high_resolution_clock::now();
+        time_gaussian += std::chrono::duration<double, std::milli>(end - start).count();
+
+        // 2. Measure Sobel Gradients
+        start = std::chrono::high_resolution_clock::now();
         sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
+        end = std::chrono::high_resolution_clock::now();
+        time_sobel += std::chrono::duration<double, std::milli>(end - start).count();
+
+        // 3. Measure Magnitude
+        start = std::chrono::high_resolution_clock::now();
         gradient_magnitude_scalar(grad_x, grad_y, magnitude_data, width, height, MagMethod::L1);
+        end = std::chrono::high_resolution_clock::now();
+        time_magnitude += std::chrono::duration<double, std::milli>(end - start).count();
+
+        // 4. Measure Direction
+        start = std::chrono::high_resolution_clock::now();
         gradient_direction_scalar(grad_x, grad_y, direction_data, width, height);
+        end = std::chrono::high_resolution_clock::now();
+        time_direction += std::chrono::duration<double, std::milli>(end - start).count();
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-    std::cout << "Elapsed time for " << iterations << " iterations: " << elapsed << " seconds" << std::endl;
-    // ------------------------------------------------
+    // --- Calculate Percentages ---
+    double total_time = time_gaussian + time_sobel + time_magnitude + time_direction;
 
-#ifndef __riscv
-    std::cout << "--- Running on HOST: Testing File I/O ---" << std::endl;
-    write_raw_image(filename, dummy_data, width, height);
-    std::cout << "Successfully saved dummy image." << std::endl;
-    uint8_t* read_data = read_raw_image(filename, width, height);
-    if (read_data) {
-        std::cout << "Successfully read image back." << std::endl;
-        free(read_data);
+    std::cout << "\n--- Phase 5: Profiling Breakdown ---\n";
+    std::cout << std::fixed << std::setprecision(2);
+    
+    if (total_time > 0.001) {
+        std::cout << "Gaussian Blur:   " << (time_gaussian / total_time) * 100 << "% (" << time_gaussian << " ms)\n";
+        std::cout << "Sobel Gradients: " << (time_sobel / total_time) * 100 << "% (" << time_sobel << " ms)\n";
+        std::cout << "Magnitude:       " << (time_magnitude / total_time) * 100 << "% (" << time_magnitude << " ms)\n";
+        std::cout << "Direction:       " << (time_direction / total_time) * 100 << "% (" << time_direction << " ms)\n";
+    } else {
+        std::cout << "Error: Execution too fast to measure accurately. Run more iterations.\n";
     }
-#else
-    std::cout << "--- Running on RISC-V (QEMU): Skipping File I/O ---" << std::endl;
-    std::cout << "Memory allocation and setup successful!" << std::endl;
-#endif
+    std::cout << "Total execution time: " << total_time << " ms\n";
 
+    // --- Cleanup ---
     free(dummy_data);
     free(blurred_data);
     free(grad_x);
@@ -71,7 +79,5 @@ int main() {
     free(magnitude_data);
     free(direction_data);
 
-    std::cout << "Phase 4 completed successfully!" << std::endl;
     return 0;
 }
-
