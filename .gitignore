@@ -8,3 +8,4 @@ rv_canny-Ofast
 rv_canny-Os
 
 run_tests
+*:Zone.Identifier
