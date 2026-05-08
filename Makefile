@@ -29,7 +29,7 @@ run: canny_rv
 	qemu-riscv64 $(RV_OUT)
 
 clean:
-	rm -f $(HOST_OUT) $(RV_OUT) $(TEST_OUT) images/test_image.raw
+	rm -f $(HOST_OUT) $(RV_OUT) $(TEST_OUT) images/test_image.raw rv_canny-O* rv_canny-Os
 
 OPT_FLAGS = -O0 -O2 -O3 -Os -Ofast
 
