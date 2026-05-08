@@ -7,13 +7,16 @@
 #include "../include/sobel.h"
 #include "../include/magnitude.h"
 #include "../include/direction.h"
+#include "../include/nms.h"
+#include "../include/threshold.h"
+#include "../include/hysteresis.h"
 
 int main() {
     int width = 256;
     int height = 256;
     size_t size = width * height;
 
-    // --- Memory Allocation ---
+    // --- حجز الميموري لجميع المراحل ---
     uint8_t* dummy_data = (uint8_t*)aligned_alloc(32, size);
     for (size_t i = 0; i < size; ++i) {
         dummy_data[i] = i % 256;
@@ -24,60 +27,69 @@ int main() {
     int16_t* grad_y = (int16_t*)aligned_alloc(32, size * sizeof(int16_t));
     uint8_t* magnitude_data = (uint8_t*)aligned_alloc(32, size);
     uint8_t* direction_data = (uint8_t*)aligned_alloc(32, size);
+    uint8_t* nms_data = (uint8_t*)aligned_alloc(32, size);
+    uint8_t* threshold_data = (uint8_t*)aligned_alloc(32, size);
 
-    // --- PHASE 5: PROFILING (MODERN C++ CHRONO) ---
-    double time_gaussian = 0.0, time_sobel = 0.0, time_magnitude = 0.0, time_direction = 0.0;
+    // --- قياس الأداء (Phase 5) ---
+    double t_gauss = 0, t_sobel = 0, t_mag = 0, t_dir = 0, t_nms = 0, t_thresh = 0, t_hyst = 0;
     int iterations = 100;
 
     for (int it = 0; it < iterations; ++it) {
-        // 1. Measure Gaussian Blur
-        auto start = std::chrono::high_resolution_clock::now();
+        auto s = std::chrono::high_resolution_clock::now();
         gaussian_blur_scalar(dummy_data, blurred_data, width, height);
-        auto end = std::chrono::high_resolution_clock::now();
-        time_gaussian += std::chrono::duration<double, std::milli>(end - start).count();
+        auto e = std::chrono::high_resolution_clock::now();
+        t_gauss += std::chrono::duration<double, std::milli>(e - s).count();
 
-        // 2. Measure Sobel Gradients
-        start = std::chrono::high_resolution_clock::now();
+        s = std::chrono::high_resolution_clock::now();
         sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
-        end = std::chrono::high_resolution_clock::now();
-        time_sobel += std::chrono::duration<double, std::milli>(end - start).count();
+        e = std::chrono::high_resolution_clock::now();
+        t_sobel += std::chrono::duration<double, std::milli>(e - s).count();
 
-        // 3. Measure Magnitude
-        start = std::chrono::high_resolution_clock::now();
+        s = std::chrono::high_resolution_clock::now();
+#ifdef __riscv
+        gradient_magnitude_rvv(grad_x, grad_y, magnitude_data, width, height);
+#else
         gradient_magnitude_scalar(grad_x, grad_y, magnitude_data, width, height, MagMethod::L1);
-        end = std::chrono::high_resolution_clock::now();
-        time_magnitude += std::chrono::duration<double, std::milli>(end - start).count();
+#endif
+        e = std::chrono::high_resolution_clock::now();
+        t_mag += std::chrono::duration<double, std::milli>(e - s).count();
 
-        // 4. Measure Direction
-        start = std::chrono::high_resolution_clock::now();
+        s = std::chrono::high_resolution_clock::now();
         gradient_direction_scalar(grad_x, grad_y, direction_data, width, height);
-        end = std::chrono::high_resolution_clock::now();
-        time_direction += std::chrono::duration<double, std::milli>(end - start).count();
+        e = std::chrono::high_resolution_clock::now();
+        t_dir += std::chrono::duration<double, std::milli>(e - s).count();
+
+        s = std::chrono::high_resolution_clock::now();
+        non_max_suppression(magnitude_data, direction_data, nms_data, width, height);
+        e = std::chrono::high_resolution_clock::now();
+        t_nms += std::chrono::duration<double, std::milli>(e - s).count();
+
+        s = std::chrono::high_resolution_clock::now();
+        uint8_t low, high;
+        auto_threshold(nms_data, size, low, high);
+        double_threshold(nms_data, threshold_data, width, height, low, high);
+        e = std::chrono::high_resolution_clock::now();
+        t_thresh += std::chrono::duration<double, std::milli>(e - s).count();
+
+        s = std::chrono::high_resolution_clock::now();
+        hysteresis_tracing(threshold_data, width, height);
+        e = std::chrono::high_resolution_clock::now();
+        t_hyst += std::chrono::duration<double, std::milli>(e - s).count();
     }
 
-    // --- Calculate Percentages ---
-    double total_time = time_gaussian + time_sobel + time_magnitude + time_direction;
-
-    std::cout << "\n--- Phase 5: Profiling Breakdown ---\n";
+    double total = t_gauss + t_sobel + t_mag + t_dir + t_nms + t_thresh + t_hyst;
+    std::cout << "\n--- Phase 5: Profiling (7-Stage Pipeline) ---\n";
     std::cout << std::fixed << std::setprecision(2);
-    
-    if (total_time > 0.001) {
-        std::cout << "Gaussian Blur:   " << (time_gaussian / total_time) * 100 << "% (" << time_gaussian << " ms)\n";
-        std::cout << "Sobel Gradients: " << (time_sobel / total_time) * 100 << "% (" << time_sobel << " ms)\n";
-        std::cout << "Magnitude:       " << (time_magnitude / total_time) * 100 << "% (" << time_magnitude << " ms)\n";
-        std::cout << "Direction:       " << (time_direction / total_time) * 100 << "% (" << time_direction << " ms)\n";
-    } else {
-        std::cout << "Error: Execution too fast to measure accurately. Run more iterations.\n";
-    }
-    std::cout << "Total execution time: " << total_time << " ms\n";
+    std::cout << "Gaussian Blur:   " << (t_gauss/total)*100 << "% (" << t_gauss << " ms)\n";
+    std::cout << "Sobel Gradients: " << (t_sobel/total)*100 << "% (" << t_sobel << " ms)\n";
+    std::cout << "Magnitude:       " << (t_mag/total)*100 << "% (" << t_mag << " ms)\n";
+    std::cout << "Direction:       " << (t_dir/total)*100 << "% (" << t_dir << " ms)\n";
+    std::cout << "NMS:             " << (t_nms/total)*100 << "% (" << t_nms << " ms)\n";
+    std::cout << "Thresholding:    " << (t_thresh/total)*100 << "% (" << t_thresh << " ms)\n";
+    std::cout << "Hysteresis:      " << (t_hyst/total)*100 << "% (" << t_hyst << " ms)\n";
+    std::cout << "Total Time:      " << total << " ms\n";
 
-    // --- Cleanup ---
-    free(dummy_data);
-    free(blurred_data);
-    free(grad_x);
-    free(grad_y);
-    free(magnitude_data);
-    free(direction_data);
-
+    free(dummy_data); free(blurred_data); free(grad_x); free(grad_y);
+    free(magnitude_data); free(direction_data); free(nms_data); free(threshold_data);
     return 0;
 }
