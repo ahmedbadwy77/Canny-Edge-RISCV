@@ -1,20 +1,17 @@
 # Canny-Edge-RISCV
 Embedded Project
-## Phase 4: Optimization Sweep Results
+## Phase 5: Profiling Breakdown (Optimization: -O3)
+Current profiling results on QEMU after initial RVV implementation for Magnitude and Gaussian Blur.
 
-The following table summarizes the impact of compiler optimization flags on binary size, runtime, and vectorization behavior for the Canny Edge pipeline:
+| Stage | Time (ms) | Percentage (%) | Status |
+| :--- | :--- | :--- | :--- |
+| **Gaussian Blur** | **1127.91** | **49.42%** | **RVV Optimized** |
+| Sobel Gradients | 44.52 | 1.95% | Scalar |
+| **Magnitude** | **199.06** | **8.72%** | **RVV Optimized** |
+| Direction | 102.85 | 4.51% | Scalar |
+| NMS | 646.78 | 28.34% | Scalar |
+| Thresholding | 98.21 | 4.30% | Scalar |
+| Hysteresis | 62.83 | 2.75% | Scalar |
+| **Total Time** | **2282.16 ms** | **100%** | |
 
-| Optimization | Binary Size | Runtime (100 iters) | Vectorization Notes |
-|--------------|-------------|--------------------------|---------------------|
-| -O0          | 3.0M        | 4.26145s                 | None                |
-| -O2          | 3.0M        | 1.75745s                 | Some loops          |
-| -O3          | 3.0M        | 0.588669s                | More aggressive     |
-| -Os          | 3.0M        | 1.70915s                 | Size-focused        |
-| -Ofast       | 3.0M        | 0.586594s                | Max speed           |
-
-**Observations:**
-- Binary sizes stayed roughly constant (~3 MB).
-- Runtime dropped significantly with higher optimization levels.
-- Vectorization was minimal at `-O0`, moderate at `-O2`, aggressive at `-O3`, and maximized at `-Ofast`.
-- `-Os` prioritized smaller code size but sacrificed some speed.
-
+> **Note:** Absolute time is higher due to QEMU software emulation of vector widening instructions.
