@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-// مصفوفة الفلتر 5x5 (مجموعها 273)
+// 5x5 Filter Matrix (sum = 273)
 const int16_t GAUSSIAN_KERNEL[5][5] = {
     { 1,  4,  7,  4,  1 },
     { 4, 16, 26, 16,  4 },
