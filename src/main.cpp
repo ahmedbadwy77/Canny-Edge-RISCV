@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <iomanip>
-#include <chrono> 
+#include <chrono>
 #include "../include/image_io.h"
 #include "../include/gaussian.h"
 #include "../include/sobel.h"
@@ -16,12 +16,17 @@ int main() {
     int height = 256;
     size_t size = width * height;
 
-    // --- حجز الميموري لجميع المراحل ---
-    uint8_t* dummy_data = (uint8_t*)aligned_alloc(32, size);
-    for (size_t i = 0; i < size; ++i) {
-        dummy_data[i] = i % 256;
+    // --- 1. Attempt to load real image, fallback to memory generation if emulator blocks I/O ---
+    uint8_t* input_buf = read_raw_image("input.raw", width, height);
+    if (!input_buf) {
+        std::cout << "Warning: Emulator blocked file I/O. Generating image in memory to continue profiling...\n";
+        input_buf = (uint8_t*)aligned_alloc(32, size);
+        for (size_t i = 0; i < size; ++i) {
+            input_buf[i] = i % 256;
+        }
     }
 
+    // --- Allocate aligned memory for all pipeline stages ---
     uint8_t* blurred_data = (uint8_t*)aligned_alloc(32, size);
     int16_t* grad_x = (int16_t*)aligned_alloc(32, size * sizeof(int16_t));
     int16_t* grad_y = (int16_t*)aligned_alloc(32, size * sizeof(int16_t));
@@ -30,22 +35,28 @@ int main() {
     uint8_t* nms_data = (uint8_t*)aligned_alloc(32, size);
     uint8_t* threshold_data = (uint8_t*)aligned_alloc(32, size);
 
-    // --- قياس الأداء (Phase 5) ---
+    // --- Performance Profiling ---
     double t_gauss = 0, t_sobel = 0, t_mag = 0, t_dir = 0, t_nms = 0, t_thresh = 0, t_hyst = 0;
-    int iterations = 100;
+    int iterations = 10;
 
     for (int it = 0; it < iterations; ++it) {
-      auto s = std::chrono::high_resolution_clock::now();
+        auto s = std::chrono::high_resolution_clock::now();
 #ifdef __riscv
-        gaussian_blur_rvv(dummy_data, blurred_data, width, height);
+        gaussian_blur_rvv(input_buf, blurred_data, width, height);
 #else
-        gaussian_blur_scalar(dummy_data, blurred_data, width, height);
+        gaussian_blur_scalar(input_buf, blurred_data, width, height);
 #endif
         auto e = std::chrono::high_resolution_clock::now();
         t_gauss += std::chrono::duration<double, std::milli>(e - s).count();
 
         s = std::chrono::high_resolution_clock::now();
+// --- THIS IS THE NEW PART FOR SOBEL RVV ---
+#ifdef __riscv
+        sobel_gradients_rvv(blurred_data, grad_x, grad_y, width, height);
+#else
         sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
+#endif
+// ------------------------------------------
         e = std::chrono::high_resolution_clock::now();
         t_sobel += std::chrono::duration<double, std::milli>(e - s).count();
 
@@ -82,7 +93,7 @@ int main() {
     }
 
     double total = t_gauss + t_sobel + t_mag + t_dir + t_nms + t_thresh + t_hyst;
-    std::cout << "\n--- Phase 5: Profiling (7-Stage Pipeline) ---\n";
+    std::cout << "\n--- Phase 6: Profiling (RVV Sobel Included) ---\n";
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Gaussian Blur:   " << (t_gauss/total)*100 << "% (" << t_gauss << " ms)\n";
     std::cout << "Sobel Gradients: " << (t_sobel/total)*100 << "% (" << t_sobel << " ms)\n";
@@ -93,7 +104,8 @@ int main() {
     std::cout << "Hysteresis:      " << (t_hyst/total)*100 << "% (" << t_hyst << " ms)\n";
     std::cout << "Total Time:      " << total << " ms\n";
 
-    free(dummy_data); free(blurred_data); free(grad_x); free(grad_y);
+    free(input_buf); free(blurred_data); free(grad_x); free(grad_y);
     free(magnitude_data); free(direction_data); free(nms_data); free(threshold_data);
+    
     return 0;
 }
