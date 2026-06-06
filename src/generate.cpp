@@ -34,9 +34,8 @@ int main() {
     gaussian_blur_scalar(input_buf, blurred_data, width, height);
     sobel_gradients_scalar(blurred_data, grad_x, grad_y, width, height);
     gradient_magnitude_scalar(grad_x, grad_y, magnitude_data, width, height, MagMethod::L1);
-    gradient_direction_scalar(grad_x, grad_y, direction_data, width, height);
+    gradient_direction_rvv(grad_x, grad_y, direction_data, width, height);
     non_max_suppression(magnitude_data, direction_data, nms_data, width, height);
-    
     uint8_t low, high;
     auto_threshold(nms_data, size, low, high);
     double_threshold(nms_data, threshold_data, width, height, low, high);

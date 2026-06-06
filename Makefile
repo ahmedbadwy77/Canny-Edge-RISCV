@@ -2,7 +2,7 @@
 HOST_CXX = g++
 # المتغير ده بيسمحلك تغير الـ Optimization من بره (الافتراضي هو -O0) [cite: 1003-1005]
 OPT ?= -O0
-RV_CXX = riscv64-unknown-elf-g++ $(OPT)
+RV_CXX = riscv64-unknown-elf-g++ $(OPT) -march=rv64gcv -mabi=lp64d
 
 # ملفات الكود الأساسية
 SRC = src/main.cpp src/image_io.cpp
