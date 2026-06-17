@@ -34,7 +34,11 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
 |-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
 |-- input.raw                 # 256x256 grayscale test image
-|-- view.py                   # Utility for visualizing raw output
+|-- docs/                    # Project documentation PDF
+|   `-- RISCV_Canny_Documentation_v4.pdf
+|-- tools/                   # Utility scripts
+|   |-- fix_image.py          # Image preprocessing utility
+|   `-- view.py               # Visualize raw output
 `-- README.md
 ```
 
