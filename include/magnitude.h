@@ -20,7 +20,11 @@ template<typename GradT = int16_t, typename PixelT = uint8_t>
 void gradient_magnitude_scalar(const GradT* grad_x, const GradT* grad_y, PixelT* output, int width, int height, MagMethod method) {
     int size = width * height;
 
-    uint32_t* raw_mag = (uint32_t*)aligned_alloc(32, size * sizeof(uint32_t));
+    uint32_t* raw_mag = (uint32_t*)malloc(size * sizeof(uint32_t));
+    if (!raw_mag) {
+        std::fill_n(output, size, 0);
+        return;
+    }
     uint32_t max_mag = 0;
 
     // Pass 1: Calculate magnitude and find max value
@@ -52,7 +56,7 @@ void gradient_magnitude_scalar(const GradT* grad_x, const GradT* grad_y, PixelT*
 // Key ideas: abs-value via negate+max trick, vector reduction
 // for global max (vredmaxu), two-pass normalize with vdivu.
 // ============================================================
-#ifdef __riscv
+#if defined(__riscv_vector)
 #include <riscv_vector.h>
 
 void gradient_magnitude_rvv(const int16_t* grad_x, const int16_t* grad_y, uint8_t* output, int width, int height) {
@@ -60,7 +64,11 @@ void gradient_magnitude_rvv(const int16_t* grad_x, const int16_t* grad_y, uint8_
 
     // Temporary 32-bit buffer for raw magnitudes before normalization.
     // Must be 32-bit because L1 max = 2*32767 = 65534, exceeds uint16 range.
-    uint32_t* raw_mag = (uint32_t*)aligned_alloc(32, size * sizeof(uint32_t));
+    uint32_t* raw_mag = (uint32_t*)malloc(size * sizeof(uint32_t));
+    if (!raw_mag) {
+        std::fill_n(output, size, 0);
+        return;
+    }
 
     // -------------------------------------------------------
     // PASS 1: Compute L1 Magnitude and Find Global Maximum

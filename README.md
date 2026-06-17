@@ -1,228 +1,240 @@
-# RISC-V Canny Edge Detection Pipeline 🚀
+# RISC-V Canny Edge Detection Pipeline
 
-![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
-![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
-![GoogleTest](https://img.shields.io/badge/Testing-GoogleTest-green.svg)
-![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
+A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
 
-A high-performance Canny Edge Detection pipeline targeting **RISC-V (RV64GCV)** and running on **QEMU user-mode emulation**. The project demonstrates a complete embedded optimization workflow: scalar C++ baseline → compiler optimization sweep → RVV intrinsic acceleration.
+## Features
 
----
+- Complete Canny pipeline:
+  Gaussian Blur, Sobel Gradients, Magnitude, Direction Quantization, Non-Maximum Suppression, Double Thresholding, and Hysteresis.
+- Native host scalar build for development and unit testing.
+- RISC-V scalar build using `rv64gc`.
+- RISC-V RVV build using `rv64gcv`.
+- RVV implementations for Gaussian Blur, Sobel, Magnitude, Direction, and NMS.
+- Bit-exact verification between RISC-V scalar output and RISC-V RVV output.
+- GoogleTest test suite with 34 passing tests.
 
-## 🛠 Features
-
-- **Full 7-Stage Pipeline:** Gaussian Blur → Sobel → Magnitude → Direction → NMS → Thresholding → Hysteresis
-- **RVV Acceleration:** Hand-optimized kernels using RISC-V Vector intrinsics (`<riscv_vector.h>`) for Gaussian Blur, Sobel Gradients, Magnitude, and Direction
-- **Vector-Length-Agnostic:** Verified correct output at VLEN=128, 256, and 512 — same binary, no hardcoded assumptions
-- **TDD Methodology:** 33 unit tests using **GoogleTest** ensuring 100% mathematical accuracy
-- **Complete Optimization Journey:** Benchmarked from `-O0` scalar baseline through RVV `-O3`
-
----
-
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 .
-├── include/                  # Header files for all pipeline stages
-│   ├── gaussian.h            # Gaussian Blur (scalar + RVV)
-│   ├── sobel.h               # Sobel Gradients (scalar + RVV)
-│   ├── magnitude.h           # Gradient Magnitude (scalar + RVV)
-│   ├── direction.h           # Gradient Direction (scalar + RVV)
-│   ├── nms.h                 # Non-Maximum Suppression
-│   ├── threshold.h           # Double Thresholding
-│   ├── hysteresis.h          # Hysteresis Edge Tracing
-│   └── image_io.h            # Raw image I/O
-├── src/
-│   ├── main.cpp              # Pipeline entry point + timing harness
-│   ├── image_io.cpp          # Image load/save implementation
-│   └── generate.cpp          # Test image generator
-├── tests/
-│   └── test_pipeline.cpp     # 33 GoogleTest unit tests
-├── Makefile                  # Dual-target build (host + RISC-V)
-├── input.raw                 # 256x256 test image (raw grayscale)
-├── view.py                   # Visualize raw images with Python
-├── fix_image.py              # Image preprocessing utility
-└── README.md
+|-- include/                  # Pipeline headers
+|   |-- gaussian.h            # Gaussian Blur, scalar + RVV
+|   |-- sobel.h               # Sobel Gradients, scalar + RVV
+|   |-- magnitude.h           # Gradient Magnitude, scalar + RVV
+|   |-- direction.h           # Direction Quantization, scalar + RVV
+|   |-- nms.h                 # Non-Maximum Suppression, scalar + RVV
+|   |-- threshold.h           # Double Thresholding
+|   |-- hysteresis.h          # Hysteresis Edge Tracing
+|   `-- image_io.h            # Raw image I/O interface
+|-- src/
+|   |-- main.cpp              # Pipeline entry point and timing harness
+|   `-- image_io.cpp          # Raw image load/save implementation
+|-- tests/
+|   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
+|-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
+|-- input.raw                 # 256x256 grayscale test image
+|-- view.py                   # Utility for visualizing raw output
+`-- README.md
 ```
 
----
+## Prerequisites
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- RISC-V GNU Toolchain built with `--with-arch=rv64gcv` (`riscv64-unknown-elf-g++`)
-- QEMU built for `riscv64-linux-user` (`qemu-riscv64`)
-- GoogleTest installed for host-side testing (`libgtest-dev`)
-
-### Build & Run
+Install the following tools on Linux/WSL:
 
 ```bash
-# Run unit tests (native host)
-make test
-
-# Cross-compile for RISC-V at a specific optimization level
-make canny_rv OPT=-O0
-make canny_rv OPT=-O2
-make canny_rv OPT=-O3
-
-# Run on QEMU at different vector lengths
-qemu-riscv64 -cpu rv64,v=true,vlen=128 ./rv_canny
-qemu-riscv64 -cpu rv64,v=true,vlen=256 ./rv_canny
-qemu-riscv64 -cpu rv64,v=true,vlen=512 ./rv_canny
-
-# Visualize output
-python3 view.py output.raw 256 256
+sudo apt update
+sudo apt install -y g++ qemu-user g++-riscv64-linux-gnu libgtest-dev
 ```
 
----
+Required commands:
 
-## 📊 Optimization Results
+- `g++`
+- `riscv64-linux-gnu-g++`
+- `qemu-riscv64`
+- GoogleTest libraries: `-lgtest -lgtest_main`
 
-All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image, averaged over 10 iterations.
+## Build And Run
 
-### Overall Optimization Summary
-
-| Build Type   | Flags                          | VLEN | Runtime (ms) | Binary Size  | Speedup vs -O0 |
-|--------------|--------------------------------|------|-------------|--------------|----------------|
-| Scalar -O0   | `-O0`                          | —    | 6,535.62    | 1,213 KB     | 1.0×           |
-| Scalar -O2   | `-O2`                          | —    | 631.77      | 1,184 KB     | 10.3×          |
-| Scalar -Ofast| `-Ofast`                       | —    | 875.67      | 1,188 KB     | 7.5×           |
-| RVV -O3      | `-O3 -march=rv64gcv -mabi=lp64d` | 128 | 882.62    | 1,188 KB     | 7.4×           |
-
-> **Note on QEMU timing:** QEMU is not cycle-accurate and does not model vector execution units.
-> Wall-clock time on QEMU does not reflect real hardware speedup. On actual RISC-V silicon,
-> RVV kernels process 16–64 pixels per cycle (depending on VLEN) versus 1 pixel per cycle scalar.
-> The instruction count reduction is real; QEMU just cannot reflect the throughput benefit.
-
----
-
-### Stage Breakdown at -O0 (Scalar Baseline)
-
-| Stage          | Time (ms)  | Percentage |
-|----------------|------------|------------|
-| Gaussian Blur  | 3,800.60   | 58.15%     |
-| Sobel Gradients| 1,808.04   | 27.66%     |
-| Magnitude      | 750.37     | 11.48%     |
-| Direction      | 14.41      | 0.22%      |
-| NMS            | 15.42      | 0.24%      |
-| Thresholding   | 10.77      | 0.16%      |
-| Hysteresis     | 136.01     | 2.08%      |
-| **Total**      | **6,535.62** | **100%** |
-
-> **Hotspot identification:** Gaussian (58%) + Sobel (28%) = **86% of total runtime**.
-> This is where we focused RVV optimization effort — Amdahl's Law in practice.
-> Direction (0.22%) was not worth vectorizing for performance; RVV added there for completeness only.
-
----
-
-### Stage Breakdown at -O2 (Scalar, Compiler Optimized)
-
-| Stage          | Time (ms) | Percentage |
-|----------------|-----------|------------|
-| Gaussian Blur  | 334.90    | 53.01%     |
-| Sobel Gradients| 153.23    | 24.25%     |
-| Magnitude      | 68.57     | 10.85%     |
-| Direction      | 5.53      | 0.88%      |
-| NMS            | 6.07      | 0.96%      |
-| Thresholding   | 30.79     | 4.87%      |
-| Hysteresis     | 32.68     | 5.17%      |
-| **Total**      | **631.77** | **100%** |
-
-> **-O2 gives a free 10.3× speedup** with no code changes. The compiler auto-vectorized
-> some inner loops and eliminated redundant memory accesses. Gaussian + Sobel still
-> dominate at 77% combined — confirming they are the right targets for manual RVV.
-
----
-
-### Stage Breakdown at -Ofast (Scalar)
-
-| Stage          | Time (ms) | Percentage |
-|----------------|-----------|------------|
-| Gaussian Blur  | 363.84    | 41.55%     |
-| Sobel Gradients| 153.97    | 17.58%     |
-| Magnitude      | 61.00     | 6.97%      |
-| Direction      | 5.61      | 0.64%      |
-| NMS            | 233.70    | 26.69%     |
-| Thresholding   | 28.35     | 3.24%      |
-| Hysteresis     | 29.20     | 3.33%      |
-| **Total**      | **875.67** | **100%** |
-
-> **-Ofast is slower than -O2** (875ms vs 632ms). The NMS stage jumped from 0.96% to 26.69%
-> because aggressive floating-point reassociation changed the branch behavior in NMS,
-> making it slower despite less strict IEEE compliance.
-
----
-
-### Stage Breakdown at -O3 with RVV Intrinsics (VLEN=128)
-
-| Stage          | Time (ms) | Percentage | Implementation |
-|----------------|-----------|------------|----------------|
-| Gaussian Blur  | 360.14    | 40.80%     | ✅ RVV          |
-| Sobel Gradients| 153.13    | 17.35%     | ✅ RVV          |
-| Magnitude      | 67.26     | 7.62%      | ✅ RVV          |
-| Direction      | 5.34      | 0.61%      | ✅ RVV          |
-| NMS            | 235.97    | 26.74%     | Scalar          |
-| Thresholding   | 27.16     | 3.08%      | Scalar          |
-| Hysteresis     | 33.63     | 3.81%      | Scalar          |
-| **Total**      | **882.62** | **100%** |                |
-
-> **Workload distribution shift:** After vectorizing Gaussian and Sobel, NMS became the
-> new dominant stage (26.74%). This is the classic Amdahl's Law effect — optimizing
-> the hotspot reveals the next bottleneck. On real RISC-V hardware, the RVV kernels
-> would show dramatic speedup; NMS (branch-heavy, data-dependent) would then be the
-> clear next optimization target.
-
----
-
-## 🧪 Testing
+Run the host unit tests:
 
 ```bash
-# Run all 33 GoogleTest unit tests on host
 make test
 ```
 
-Tests cover:
-- Gaussian: uniform image invariant, impulse response, zero-padding boundary
-- Sobel: zero gradient on uniform image, correct direction on synthetic edges
-- Magnitude: L1 vs L2 comparison, nonzero output verification
-- Direction: correct quantization (0°/45°/90°/135°) on all edge types
-- RVV equivalence: scalar vs RVV output match at VLEN=128, 256, 512 (±1 tolerance)
+Build all binaries:
 
----
+```bash
+make all
+```
 
-## 🔧 RVV Implementation Details
+Run the native host scalar version:
 
-| Kernel   | LMUL | Key Intrinsics Used | VLEN Tested |
-|----------|------|---------------------|-------------|
-| Gaussian | m1/m4| vsetvl, vle8, vzext_vf2, vwmul, vadd, vsra, vncvt, vse8 | 128, 256, 512 |
-| Sobel    | m1/m2| vsetvl, vle8, vzext_vf2, vslide1up, vslide1down, vmacc, vse16 | 128, 256, 512 |
-| Magnitude| m1/m2/m4 | vsetvl, vle16, vrsub, vmax, vadd, vzext, vredmaxu, vmv_x_s, vdivu, vncvt, vse8 | 128, 256, 512 |
-| Direction| m2   | vsetvl, vle16, vmslt, vneg, vmerge, vmsgt, vmv_v_x, vse8 | 128, 256, 512 |
+```bash
+make host
+./host_canny 256 256 100
+```
 
-All RVV kernels are **vector-length-agnostic**: the same binary produces identical
-output at VLEN=128, 256, and 512. No hardcoded assumptions about register width.
+Run the RISC-V scalar binary under QEMU:
 
----
+```bash
+make run_scalar ARGS="256 256 100"
+```
 
-## 📝 AI Usage Log
+Run the RISC-V RVV binary under QEMU:
 
-| # | Question Asked | AI Suggested | What We Changed | What We Learned |
-|---|---------------|--------------|-----------------|-----------------|
-| 1 | How to implement strip-mining loop in RVV | Basic vsetvl + loop pattern | Adapted for interior-only processing to skip boundary checks | vsetvl returns different vl at each VLEN — that's the whole point of VLA |
-| 2 | Fixed-point division trick for Gaussian normalization | Multiply by reciprocal then shift | Chose 240 >> 16 approximation for ÷273 | Precision vs speed tradeoff; error < 0.1% for 8-bit output |
-| 3 | How to compute absolute value in RVV | vrsub + vmax pattern | Applied to both Gx and Gy in magnitude kernel | No dedicated integer abs in RVV 1.0; negate-and-max is the standard idiom |
-| 4 | LMUL chain for widening multiply | Showed m1→m2→m4 chain | Verified against spec; fixed LMUL mismatch in early draft | Widening ALWAYS doubles LMUL — getting this wrong causes cryptic type errors |
-| 5 | How to extract scalar result from vector reduction | vmv_x_s after vredmaxu | Added guard for global_max == 0 | Reduction writes to element[0]; vmv_x_s is the only way to get it back to C |
+```bash
+make run_rvv ARGS="256 256 100"
+```
 
----
+## Correctness Verification
 
-## 👥 Team
+The main correctness check compares the RISC-V scalar output against the RISC-V RVV output using the same QEMU CPU configuration:
 
-| Member | Role |
-|--------|------|
-| Student A | Infrastructure: toolchain, QEMU, Makefile, image I/O |
-| Student B | Scalar pipeline: Gaussian, Sobel, Magnitude, Direction, NMS |
-| Student C | Testing: GoogleTest suite, RVV kernels, VLEN sweep |
-| Student D | Phase 7: annotations, README, report narrative, demo |
+```bash
+make verify
+```
 
+Expected result:
+
+- `cmp scalar_output.raw rvv_output.raw` prints no differences.
+- `sha256sum scalar_output.raw rvv_output.raw` prints the same hash for both files.
+
+Latest verified result:
+
+```text
+[  PASSED  ] 34 tests.
+
+RISC-V Scalar SHA-256:
+c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da
+
+RISC-V RVV SHA-256:
+c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da
+```
+
+This confirms that the RVV implementation is functionally correct and produces byte-identical final edge output compared with the RISC-V scalar implementation.
+
+## Final Results To Report
+
+The main validated results are:
+
+| Item | Result |
+|------|--------|
+| Unit tests | 34/34 passed |
+| Host build | Passed |
+| RISC-V scalar build | Passed |
+| RISC-V RVV build | Passed |
+| Scalar vs RVV output comparison | Byte-identical |
+| SHA-256 comparison | Matching hashes |
+| Performance environment | QEMU user-mode emulation |
+
+The most important correctness evidence is:
+
+```text
+cmp scalar_output.raw rvv_output.raw
+```
+
+This command produced no output, which means the two files are identical.
+
+The SHA-256 hashes were also identical:
+
+```text
+c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da  scalar_output.raw
+c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da  rvv_output.raw
+```
+
+## Benchmarking
+
+Run:
+
+```bash
+make benchmark ARGS="256 256 100"
+```
+
+Latest QEMU benchmark using a 256x256 image and 100 iterations:
+
+### RISC-V Scalar
+
+```text
+Mode:            RISC-V Scalar
+Size:            256x256
+Iterations:      100
+Gaussian Blur:   77.71% (754.34 ms)
+Sobel Gradients: 4.98% (48.29 ms)
+Magnitude:       2.75% (26.69 ms)
+Direction:       4.24% (41.13 ms)
+NMS:             4.75% (46.11 ms)
+Thresholding:    2.26% (21.91 ms)
+Hysteresis:      3.32% (32.20 ms)
+Total Time:      970.67 ms
+```
+
+### RISC-V RVV
+
+```text
+Mode:            RISC-V RVV
+Size:            256x256
+Iterations:      100
+Gaussian Blur:   45.45% (1015.01 ms)
+Sobel Gradients: 15.55% (347.33 ms)
+Magnitude:       8.77% (195.86 ms)
+Direction:       12.65% (282.47 ms)
+NMS:             14.97% (334.40 ms)
+Thresholding:    1.03% (23.03 ms)
+Hysteresis:      1.57% (35.16 ms)
+Total Time:      2233.26 ms
+```
+
+## Important Note About QEMU Timing
+
+QEMU user-mode emulation is useful for validating that the RISC-V scalar and RVV binaries run correctly and produce matching output. However, QEMU emulates RVV instructions in software, so the wall-clock runtime is not a reliable measurement of real RVV hardware performance.
+
+For this reason, the QEMU benchmark should be reported as an emulation result only. The strongest validated result in this project is correctness: the RVV binary produces byte-identical output compared with the RISC-V scalar binary.
+
+Accurate RVV performance evaluation requires real RVV-capable hardware or a simulator/tooling setup intended for performance measurement.
+
+## Reproducibility Commands
+
+Use this exact sequence to reproduce the final validation:
+
+```bash
+make clean
+make test
+make verify
+make benchmark ARGS="256 256 100"
+```
+
+Expected validation result:
+
+- `make test` should finish with `34 tests` passed.
+- `make verify` should build both RISC-V binaries.
+- `cmp scalar_output.raw rvv_output.raw` should print nothing.
+- `sha256sum scalar_output.raw rvv_output.raw` should print matching hashes.
+- `make benchmark` should print two profiles: `RISC-V Scalar` and `RISC-V RVV`.
+
+Do not use native host timing as a direct comparison against QEMU RISC-V timing. Host timing runs on the x86 machine, while RISC-V timing runs inside emulation.
+
+## Implementation Notes
+
+- Border handling in the RVV Gaussian and Sobel kernels was matched to the scalar implementation.
+- The RVV Sobel `Gy` sign was corrected to match the scalar Sobel-Y kernel.
+- Gaussian normalization uses exact division by 273 in the RVV path to preserve scalar-equivalent output.
+- RVV code is guarded with `__riscv_vector`, so scalar RISC-V builds do not require RVV intrinsics.
+- The main program validates command-line arguments and reports the active mode:
+  `Host Scalar`, `RISC-V Scalar`, or `RISC-V RVV`.
+- Raw image I/O checks file read/write failures instead of silently continuing.
+
+## Clean Generated Files
+
+```bash
+make clean
+```
+
+Generated output files such as `output.raw`, `scalar_output.raw`, and `rvv_output.raw` can also be removed manually if needed.
+
+## Suggested Report Summary
+
+```text
+The project implements a full Canny Edge Detection pipeline in C++ with scalar and RISC-V Vector code paths. The implementation was tested using 34 GoogleTest tests, all of which passed. The RISC-V scalar and RVV binaries were then executed under QEMU using the same input image and CPU configuration. The final output files were compared with cmp and SHA-256, and both outputs were byte-identical.
+
+The RVV version is slower than the scalar version under QEMU because QEMU emulates vector instructions in software. Therefore, the QEMU runtime is not used as evidence of real hardware speedup. It is used mainly to validate functional correctness of the RVV implementation.
+```

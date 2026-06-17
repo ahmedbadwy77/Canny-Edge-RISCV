@@ -502,6 +502,39 @@ TEST(FullPipeline, VerticalEdgeDetectedEndToEnd) {
     free(mag); free(dir); free(nms_out); free(thresh);
 }
 
+
+TEST(FullPipeline, NonPowerOfTwoImageSize) {
+    const int W = 100, H = 75;
+    uint8_t* in      = alloc_img(W, H, 0);
+    uint8_t* blurred = alloc_img(W, H, 0);
+    int16_t* gx      = alloc_grad(W, H);
+    int16_t* gy      = alloc_grad(W, H);
+    uint8_t* mag     = alloc_img(W, H, 0);
+    uint8_t* dir     = alloc_img(W, H, 0);
+    uint8_t* nms_out = alloc_img(W, H, 0);
+    uint8_t* thresh  = alloc_img(W, H, 0);
+
+    for (int y = 0; y < H; y++)
+        for (int x = W / 2; x < W; x++)
+            in[y * W + x] = 255;
+
+    gaussian_blur_scalar(in, blurred, W, H);
+    sobel_gradients_scalar(blurred, gx, gy, W, H);
+    gradient_magnitude_scalar(gx, gy, mag, W, H, MagMethod::L2);
+    gradient_direction_scalar(gx, gy, dir, W, H);
+    non_max_suppression(mag, dir, nms_out, W, H);
+    double_threshold(nms_out, thresh, W, H, 10, 30);
+    hysteresis_tracing(thresh, W, H);
+
+    bool edge_found = false;
+    for (int y = 2; y < H - 2; y++)
+        if (thresh[y * W + W / 2] > 0) edge_found = true;
+
+    EXPECT_TRUE(edge_found) << "Non-power-of-two image should still detect the edge";
+
+    free(in); free(blurred); free(gx); free(gy);
+    free(mag); free(dir); free(nms_out); free(thresh);
+}
 // =============================================================
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

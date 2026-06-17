@@ -2,7 +2,7 @@
 #define NMS_H
 
 #include <cstdint>
-#ifdef __riscv
+#if defined(__riscv_vector)
 #include <riscv_vector.h>
 #endif
 
@@ -17,7 +17,7 @@ inline void non_max_suppression(const uint8_t* magnitude, const uint8_t* directi
         output[y*width + width-1] = 0;
     }
 
-#ifdef __riscv
+#if defined(__riscv_vector)
     // --- RVV Optimized NMS ---
     for (int y = 1; y < height - 1; y++) {
         int vl;

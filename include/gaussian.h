@@ -38,12 +38,39 @@ void gaussian_blur_scalar(const PixelT* input, PixelT* output, int width, int he
     }
 }
 
-#ifdef __riscv
+#if defined(__riscv_vector)
 #include <riscv_vector.h>
 
 void gaussian_blur_rvv(const uint8_t* input, uint8_t* output, int width, int height) {
-    // Zero-initialize
-    for(int i = 0; i < width * height; i++) output[i] = 0;
+    if (width <= 4 || height <= 4) {
+        gaussian_blur_scalar(input, output, width, height);
+        return;
+    }
+
+    // The vector loop only handles pixels with a complete 5x5 neighborhood.
+    // Compute the two-pixel border with the scalar clamping rules so both
+    // implementations produce identical output.
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (y >= 2 && y < height - 2 && x >= 2 && x < width - 2) {
+                continue;
+            }
+
+            uint32_t sum = 0;
+            for (int ky = -2; ky <= 2; ++ky) {
+                for (int kx = -2; kx <= 2; ++kx) {
+                    int nx = x + kx;
+                    int ny = y + ky;
+                    if (nx < 0) nx = 0;
+                    else if (nx >= width) nx = width - 1;
+                    if (ny < 0) ny = 0;
+                    else if (ny >= height) ny = height - 1;
+                    sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
+                }
+            }
+            output[y * width + x] = static_cast<uint8_t>(sum / 273);
+        }
+    }
 
     for (int y = 2; y < height - 2; ++y) {
         int vl;
@@ -66,9 +93,8 @@ void gaussian_blur_rvv(const uint8_t* input, uint8_t* output, int width, int hei
                 }
             }
 
-            // Fast Fixed-Point Division: (sum * 240) >> 16
-            vsum = __riscv_vmul_vx_u32m4(vsum, 240, vl);
-            vsum = __riscv_vsrl_vx_u32m4(vsum, 16, vl); // Logical shift for unsigned
+            // Match the scalar integer division exactly.
+            vsum = __riscv_vdivu_vx_u32m4(vsum, 273, vl);
             vsum = __riscv_vminu_vx_u32m4(vsum, 255, vl); // Clamp max to 255
 
             // Narrowing chain: u32m4 -> u16m2 -> u8m1
