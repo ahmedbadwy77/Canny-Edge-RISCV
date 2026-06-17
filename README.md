@@ -2,7 +2,11 @@
 
 ![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
 ![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
+![RVV](https://img.shields.io/badge/RVV-1.0-purple.svg)
+![QEMU](https://img.shields.io/badge/QEMU-user--mode-lightgrey.svg)
 ![GoogleTest](https://img.shields.io/badge/Testing-GoogleTest-green.svg)
+![Tests](https://img.shields.io/badge/tests-34%20passed-brightgreen.svg)
+![VLEN](https://img.shields.io/badge/VLEN-128%20%7C%20256%20%7C%20512-blueviolet.svg)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
 A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
