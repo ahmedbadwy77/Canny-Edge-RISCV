@@ -9,3 +9,6 @@ rv_canny-Os
 
 run_tests
 *:Zone.Identifier
+
+# Editor settings
+.vscode/
