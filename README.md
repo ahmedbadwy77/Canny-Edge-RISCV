@@ -256,7 +256,7 @@ make clean
 
 Generated output files such as `output.raw`, `scalar_output.raw`, and `rvv_output.raw` can also be removed manually if needed.
 
-## Suggested Report Summary
+## Report Summary
 
 ```text
 The project implements a full Canny Edge Detection pipeline in C++ with scalar and RISC-V Vector code paths. Gaussian Blur uses zero-padding at image boundaries, matching the project guide. The implementation was tested using 34 GoogleTest tests, all of which passed. The RISC-V scalar and RVV binaries were executed under QEMU at VLEN=128, VLEN=256, and VLEN=512. For all three VLEN values, the final output files were compared with cmp and SHA-256, and both outputs were byte-identical.
