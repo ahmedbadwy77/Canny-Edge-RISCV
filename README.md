@@ -28,7 +28,8 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |   `-- image_io.h            # Raw image I/O interface
 |-- src/
 |   |-- main.cpp              # Pipeline entry point and timing harness
-|   `-- image_io.cpp          # Raw image load/save implementation
+|   |-- image_io.cpp          # Raw image load/save implementation
+|   `-- generate.cpp          # Optional one-shot output generator
 |-- tests/
 |   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
 |-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
@@ -107,10 +108,10 @@ Latest verified result:
 [  PASSED  ] 34 tests.
 
 RISC-V Scalar SHA-256:
-c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da
+502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f
 
 RISC-V RVV SHA-256:
-c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da
+502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f
 ```
 
 This confirms that the RVV implementation is functionally correct and produces byte-identical final edge output compared with the RISC-V scalar implementation.
@@ -124,6 +125,14 @@ make verify VLEN=512
 ```
 
 These runs use QEMU's `vlen=<N>` CPU option. Matching output at all three VLEN values demonstrates that the RVV loops are vector-length agnostic.
+
+Latest VLEN sweep result:
+
+| VLEN | Result | SHA-256 |
+|------|--------|---------|
+| 128 | Scalar and RVV outputs matched | `502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f` |
+| 256 | Scalar and RVV outputs matched | `502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f` |
+| 512 | Scalar and RVV outputs matched | `502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f` |
 
 ## Final Results To Report
 
@@ -150,8 +159,8 @@ This command produced no output, which means the two files are identical.
 The SHA-256 hashes were also identical:
 
 ```text
-c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da  scalar_output.raw
-c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da  rvv_output.raw
+502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f  scalar_output.raw
+502e32bd63ca1f3a446055085d2c916f7979516924d40fa943ad8046f24ece8f  rvv_output.raw
 ```
 
 ## Benchmarking
@@ -170,14 +179,14 @@ Latest QEMU benchmark using a 256x256 image and 100 iterations:
 Mode:            RISC-V Scalar
 Size:            256x256
 Iterations:      100
-Gaussian Blur:   77.71% (754.34 ms)
-Sobel Gradients: 4.98% (48.29 ms)
-Magnitude:       2.75% (26.69 ms)
-Direction:       4.24% (41.13 ms)
-NMS:             4.75% (46.11 ms)
-Thresholding:    2.26% (21.91 ms)
-Hysteresis:      3.32% (32.20 ms)
-Total Time:      970.67 ms
+Gaussian Blur:   38.11% (136.88 ms)
+Sobel Gradients: 13.56% (48.71 ms)
+Magnitude:       7.57% (27.19 ms)
+Direction:       11.34% (40.75 ms)
+NMS:             12.98% (46.63 ms)
+Thresholding:    6.17% (22.17 ms)
+Hysteresis:      10.26% (36.87 ms)
+Total Time:      359.20 ms
 ```
 
 ### RISC-V RVV
@@ -186,14 +195,14 @@ Total Time:      970.67 ms
 Mode:            RISC-V RVV
 Size:            256x256
 Iterations:      100
-Gaussian Blur:   45.45% (1015.01 ms)
-Sobel Gradients: 15.55% (347.33 ms)
-Magnitude:       8.77% (195.86 ms)
-Direction:       12.65% (282.47 ms)
-NMS:             14.97% (334.40 ms)
-Thresholding:    1.03% (23.03 ms)
-Hysteresis:      1.57% (35.16 ms)
-Total Time:      2233.26 ms
+Gaussian Blur:   46.63% (1095.64 ms)
+Sobel Gradients: 15.44% (362.72 ms)
+Magnitude:       8.59% (201.92 ms)
+Direction:       12.11% (284.65 ms)
+NMS:             14.58% (342.63 ms)
+Thresholding:    0.97% (22.70 ms)
+Hysteresis:      1.68% (39.43 ms)
+Total Time:      2349.70 ms
 ```
 
 ## Important Note About QEMU Timing
@@ -237,6 +246,7 @@ Do not use native host timing as a direct comparison against QEMU RISC-V timing.
 - The main program validates command-line arguments and reports the active mode:
   `Host Scalar`, `RISC-V Scalar`, or `RISC-V RVV`.
 - Raw image I/O checks file read/write failures instead of silently continuing.
+- `src/generate.cpp` is optional and can compile without RVV because it falls back to the scalar direction kernel when `__riscv_vector` is not enabled.
 
 ## Clean Generated Files
 
@@ -249,7 +259,7 @@ Generated output files such as `output.raw`, `scalar_output.raw`, and `rvv_outpu
 ## Suggested Report Summary
 
 ```text
-The project implements a full Canny Edge Detection pipeline in C++ with scalar and RISC-V Vector code paths. The implementation was tested using 34 GoogleTest tests, all of which passed. The RISC-V scalar and RVV binaries were then executed under QEMU using the same input image and CPU configuration. The final output files were compared with cmp and SHA-256, and both outputs were byte-identical.
+The project implements a full Canny Edge Detection pipeline in C++ with scalar and RISC-V Vector code paths. Gaussian Blur uses zero-padding at image boundaries, matching the project guide. The implementation was tested using 34 GoogleTest tests, all of which passed. The RISC-V scalar and RVV binaries were executed under QEMU at VLEN=128, VLEN=256, and VLEN=512. For all three VLEN values, the final output files were compared with cmp and SHA-256, and both outputs were byte-identical.
 
 The RVV version is slower than the scalar version under QEMU because QEMU emulates vector instructions in software. Therefore, the QEMU runtime is not used as evidence of real hardware speedup. It is used mainly to validate functional correctness of the RVV implementation.
 ```
