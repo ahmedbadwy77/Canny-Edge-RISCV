@@ -23,8 +23,10 @@ void hysteresis_tracing(uint8_t* image, int width, int height) {
 
     // Flood fill outward from strong pixels
     while (!stk.empty()) {
-        auto [cx, cy] = stk.top();
+        std::pair<int, int> current = stk.top();
         stk.pop();
+        int cx = current.first;
+        int cy = current.second;
 
         for (int d = 0; d < 8; d++) {
             int nx = cx + dx[d];

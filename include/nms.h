@@ -2,34 +2,44 @@
 #define NMS_H
 
 #include <cstdint>
-#ifdef __riscv
+#if defined(__riscv_vector)
 #include <riscv_vector.h>
 #endif
 
-inline void non_max_suppression(const uint8_t* magnitude, const uint8_t* direction, uint8_t* output, int width, int height) {
-    // تصفير الحواف
+inline void non_max_suppression(const uint8_t* magnitude,
+                                const uint8_t* direction,
+                                uint8_t* output,
+                                int width,
+                                int height) {
+    // Zero the image border because NMS compares each interior pixel with
+    // neighbors on both sides of the local gradient direction.
     for (int x = 0; x < width; x++) {
         output[x] = 0;
-        output[(height-1)*width+x] = 0;
+        output[(height - 1) * width + x] = 0;
     }
     for (int y = 0; y < height; y++) {
-        output[y*width] = 0;
-        output[y*width + width-1] = 0;
+        output[y * width] = 0;
+        output[y * width + width - 1] = 0;
     }
 
-#ifdef __riscv
-    // --- RVV Optimized NMS ---
+#if defined(__riscv_vector)
     for (int y = 1; y < height - 1; y++) {
         int vl;
         for (int x = 1; x < width - 1; x += vl) {
+            // vsetvl selects a tail-safe vector length for this row. e8m1
+            // matches byte magnitude/direction buffers; larger VLEN only
+            // increases vl and reduces loop iterations.
             vl = __riscv_vsetvl_e8m1(width - 1 - x);
             int idx = y * width + x;
 
-            // تحميل الـ Magnitude والـ Direction
+            // Load current magnitude and quantized direction. LMUL=m1 is
+            // enough for byte data and keeps register pressure low while all
+            // eight neighbor vectors are live.
             vuint8m1_t vmag = __riscv_vle8_v_u8m1(&magnitude[idx], vl);
             vuint8m1_t vdir = __riscv_vle8_v_u8m1(&direction[idx], vl);
 
-            // تحميل الـ 8 جيران (Neighbors)
+            // Load the eight neighboring magnitude vectors used by the four
+            // quantized direction cases. Each load covers vl adjacent pixels.
             vuint8m1_t left   = __riscv_vle8_v_u8m1(&magnitude[idx - 1], vl);
             vuint8m1_t right  = __riscv_vle8_v_u8m1(&magnitude[idx + 1], vl);
             vuint8m1_t top    = __riscv_vle8_v_u8m1(&magnitude[idx - width], vl);
@@ -39,39 +49,43 @@ inline void non_max_suppression(const uint8_t* magnitude, const uint8_t* directi
             vuint8m1_t tl     = __riscv_vle8_v_u8m1(&magnitude[idx - width - 1], vl);
             vuint8m1_t br     = __riscv_vle8_v_u8m1(&magnitude[idx + width + 1], vl);
 
-            // الافتراضي: الاتجاه الأفقي (0)
+            // Default direction is 0 degrees, so compare left and right.
             vuint8m1_t n1 = left;
             vuint8m1_t n2 = right;
 
-            // الاتجاه الرأسي (90)
+            // vmseq builds a mask for 90-degree lanes; vmerge selects top and
+            // bottom neighbors only for those lanes. LMUL stays m1.
             vbool8_t m90 = __riscv_vmseq_vx_u8m1_b8(vdir, 90, vl);
             n1 = __riscv_vmerge_vvm_u8m1(n1, top, m90, vl);
             n2 = __riscv_vmerge_vvm_u8m1(n2, bottom, m90, vl);
 
-            // القطر الموجب (45)
+            // Direction 45 degrees compares top-right and bottom-left.
             vbool8_t m45 = __riscv_vmseq_vx_u8m1_b8(vdir, 45, vl);
             n1 = __riscv_vmerge_vvm_u8m1(n1, tr, m45, vl);
             n2 = __riscv_vmerge_vvm_u8m1(n2, bl, m45, vl);
 
-            // القطر السالب (135)
+            // Direction 135 degrees compares top-left and bottom-right.
             vbool8_t m135 = __riscv_vmseq_vx_u8m1_b8(vdir, 135, vl);
             n1 = __riscv_vmerge_vvm_u8m1(n1, tl, m135, vl);
             n2 = __riscv_vmerge_vvm_u8m1(n2, br, m135, vl);
 
-            // المقارنة: هل البيكسل أكبر من أو يساوي جيرانه؟
+            // Unsigned vector comparisons keep a pixel only if its magnitude is
+            // at least both selected neighbors. b8 masks match u8m1 data.
             vbool8_t mask1 = __riscv_vmsgeu_vv_u8m1_b8(vmag, n1, vl);
             vbool8_t mask2 = __riscv_vmsgeu_vv_u8m1_b8(vmag, n2, vl);
             vbool8_t final_mask = __riscv_vmand_mm_b8(mask1, mask2, vl);
 
-            // لو الشرط اتحقق، نحتفظ بالرقم، غير كده نخليه 0
+            // Merge magnitude with zero: active lanes keep vmag, suppressed
+            // lanes become 0. Larger VLEN only means more lanes are handled
+            // per strip-mined iteration.
             vuint8m1_t zeros = __riscv_vmv_v_x_u8m1(0, vl);
             vuint8m1_t vout = __riscv_vmerge_vvm_u8m1(zeros, vmag, final_mask, vl);
 
+            // Store vl suppressed magnitudes back to the output image.
             __riscv_vse8_v_u8m1(&output[idx], vout, vl);
         }
     }
 #else
-    // --- Scalar Fallback ---
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
             int idx = y * width + x;
