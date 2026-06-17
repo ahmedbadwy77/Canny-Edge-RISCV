@@ -17,6 +17,10 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 
 ```text
 .
+|-- assets/
+|   `-- final_edges.png       # Example edge-detection output
+|-- docs/
+|   `-- RISCV_Canny_Documentation_v4.pdf
 |-- include/                  # Pipeline headers
 |   |-- gaussian.h            # Gaussian Blur, scalar + RVV
 |   |-- sobel.h               # Sobel Gradients, scalar + RVV
@@ -32,13 +36,13 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |   `-- generate.cpp          # Optional one-shot output generator
 |-- tests/
 |   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
-|-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
-|-- input.raw                 # 256x256 grayscale test image
-|-- docs/                    # Project documentation PDF
-|   `-- RISCV_Canny_Documentation_v4.pdf
-|-- tools/                   # Utility scripts
+|-- tools/                    # Utility scripts
 |   |-- fix_image.py          # Image preprocessing utility
 |   `-- view.py               # Visualize raw output
+|-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
+|-- input.raw                 # 256x256 grayscale test image
+|-- LICENSE
+|-- .gitignore
 `-- README.md
 ```
 
