@@ -53,6 +53,8 @@ Required commands:
 - `qemu-riscv64`
 - GoogleTest libraries: `-lgtest -lgtest_main`
 
+The project guide recommends a custom RVV-capable RISC-V GNU toolchain built with `--with-arch=rv64gcv`. This repository uses the Linux user-mode QEMU flow, so `RV_CXX` defaults to `riscv64-linux-gnu-g++`. If the system package does not provide `<riscv_vector.h>` or cannot compile `-march=rv64gcv`, point `RV_CXX` to a custom RVV-capable compiler.
+
 ## Build And Run
 
 Run the host unit tests:
@@ -112,6 +114,16 @@ c11062d749ac045ef1d080fdd6c64fdb672064ec084dd78decc950d03b34c3da
 ```
 
 This confirms that the RVV implementation is functionally correct and produces byte-identical final edge output compared with the RISC-V scalar implementation.
+
+VLEN sweep commands:
+
+```bash
+make verify VLEN=128
+make verify VLEN=256
+make verify VLEN=512
+```
+
+These runs use QEMU's `vlen=<N>` CPU option. Matching output at all three VLEN values demonstrates that the RVV loops are vector-length agnostic.
 
 ## Final Results To Report
 
@@ -199,14 +211,16 @@ Use this exact sequence to reproduce the final validation:
 ```bash
 make clean
 make test
-make verify
+make verify VLEN=128
+make verify VLEN=256
+make verify VLEN=512
 make benchmark ARGS="256 256 100"
 ```
 
 Expected validation result:
 
 - `make test` should finish with `34 tests` passed.
-- `make verify` should build both RISC-V binaries.
+- each `make verify VLEN=<N>` command should build both RISC-V binaries.
 - `cmp scalar_output.raw rvv_output.raw` should print nothing.
 - `sha256sum scalar_output.raw rvv_output.raw` should print matching hashes.
 - `make benchmark` should print two profiles: `RISC-V Scalar` and `RISC-V RVV`.
@@ -215,6 +229,7 @@ Do not use native host timing as a direct comparison against QEMU RISC-V timing.
 
 ## Implementation Notes
 
+- Gaussian Blur uses zero-padding at the image boundary, matching the project guide.
 - Border handling in the RVV Gaussian and Sobel kernels was matched to the scalar implementation.
 - The RVV Sobel `Gy` sign was corrected to match the scalar Sobel-Y kernel.
 - Gaussian normalization uses exact division by 273 in the RVV path to preserve scalar-equivalent output.

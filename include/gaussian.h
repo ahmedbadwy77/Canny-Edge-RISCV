@@ -22,12 +22,11 @@ void gaussian_blur_scalar(const PixelT* input, PixelT* output, int width, int he
                     int nx = x + kx;
                     int ny = y + ky;
 
-                    if (nx < 0) nx = 0;
-                    else if (nx >= width) nx = width - 1;
-                    if (ny < 0) ny = 0;
-                    else if (ny >= height) ny = height - 1;
-
-                    sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
+                    // Zero-padding boundary rule: pixels outside the image
+                    // contribute 0, as required by the project guide.
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
+                    }
                 }
             }
             sum /= 273;
@@ -48,8 +47,8 @@ void gaussian_blur_rvv(const uint8_t* input, uint8_t* output, int width, int hei
     }
 
     // The vector loop only handles pixels with a complete 5x5 neighborhood.
-    // Compute the two-pixel border with the scalar clamping rules so both
-    // implementations produce identical output.
+    // Compute the two-pixel border with the scalar zero-padding rule so both
+    // implementations match the project guide and remain byte-identical.
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             if (y >= 2 && y < height - 2 && x >= 2 && x < width - 2) {
@@ -61,11 +60,10 @@ void gaussian_blur_rvv(const uint8_t* input, uint8_t* output, int width, int hei
                 for (int kx = -2; kx <= 2; ++kx) {
                     int nx = x + kx;
                     int ny = y + ky;
-                    if (nx < 0) nx = 0;
-                    else if (nx >= width) nx = width - 1;
-                    if (ny < 0) ny = 0;
-                    else if (ny >= height) ny = height - 1;
-                    sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
+                    // Zero-padding boundary rule: out-of-bounds pixels add 0.
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        sum += input[ny * width + nx] * GAUSSIAN_KERNEL[ky + 2][kx + 2];
+                    }
                 }
             }
             output[y * width + x] = static_cast<uint8_t>(sum / 273);

@@ -14,7 +14,8 @@ RV_SCALAR_OUT = rv_scalar
 RVV_OUT = rv_canny_linux
 
 QEMU = qemu-riscv64
-QEMU_RVV_CPU = rv64,v=true,vlen=128,vext_spec=v1.0
+VLEN ?= 128
+QEMU_RVV_CPU = rv64,v=true,vlen=$(VLEN),vext_spec=v1.0
 ARGS ?= 256 256 100
 VERIFY_ARGS ?= 256 256 1
 
