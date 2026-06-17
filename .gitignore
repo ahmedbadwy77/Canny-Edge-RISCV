@@ -1,14 +1,18 @@
 host_canny
 rv_canny
-*.rawrv_canny-*
+*.raw
+rv_canny-*
 rv_canny-O0
 rv_canny-O2
 rv_canny-O3
 rv_canny-Ofast
 rv_canny-Os
-
 run_tests
 *:Zone.Identifier
-
 # Editor settings
 .vscode/
+rv_canny_linux
+rv_scalar
+output.raw
+scalar_output.raw
+rvv_output.raw
