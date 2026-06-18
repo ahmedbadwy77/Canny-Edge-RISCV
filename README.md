@@ -53,7 +53,64 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |-- LICENSE
 |-- .gitignore
 `-- README.md
-```
+```# RISC-V Canny Edge Detection Pipeline 🚀
+
+![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
+![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
+![RVV](https://img.shields.io/badge/RVV-1.0-purple.svg)
+![QEMU](https://img.shields.io/badge/QEMU-user--mode-lightgrey.svg)
+![GoogleTest](https://img.shields.io/badge/Testing-GoogleTest-green.svg)
+![Tests](https://img.shields.io/badge/tests-34%20passed-brightgreen.svg)
+![VLEN](https://img.shields.io/badge/VLEN-128%20%7C%20256%20%7C%20512-blueviolet.svg)
+![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
+
+A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
+
+## Features
+
+- Complete Canny pipeline:
+  Gaussian Blur, Sobel Gradients, Magnitude, Direction Quantization, Non-Maximum Suppression, Double Thresholding, and Hysteresis.
+- Native host scalar build for development and unit testing.
+- RISC-V scalar build using `rv64gc`.
+- RISC-V RVV build using `rv64gcv`.
+- RVV implementations for Gaussian Blur, Sobel, Magnitude, Direction, and NMS.
+- Bit-exact verification between RISC-V scalar output and RISC-V RVV output.
+- GoogleTest test suite with 34 passing tests.
+
+## Repository Structure
+
+```text
+.
+|-- assets/
+|   `-- final_edges.png       # Example edge-detection output
+|-- docs/
+|   `-- RISCV_Canny_Documentation_v4.pdf
+|-- images/                   # Automated pipeline verification assets
+|   |-- raw/                  # Pure 8-bit raw pixel dumps per stage
+|   `-- png/                  # Viewable converted PNG artifacts
+|-- include/                  # Pipeline headers
+|   |-- gaussian.h            # Gaussian Blur, scalar + RVV
+|   |-- sobel.h               # Sobel Gradients, scalar + RVV
+|   |-- magnitude.h           # Gradient Magnitude, scalar + RVV
+|   |-- direction.h           # Direction Quantization, scalar + RVV
+|   |-- nms.h                 # Non-Maximum Suppression, scalar + RVV
+|   |-- threshold.h           # Double Thresholding
+|   |-- hysteresis.h          # Hysteresis Edge Tracing
+|   `-- image_io.h            # Raw image I/O interface
+|-- src/
+|   |-- main.cpp              # Pipeline entry point and timing harness
+|   |-- image_io.cpp          # Raw image load/save implementation
+|   `-- generate.cpp          # Optional one-shot output generator
+|-- tests/
+|   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
+|-- tools/                    # Utility scripts
+|   |-- fix_image.py          # Image preprocessing utility
+|   `-- view.py               # Visualize raw output
+|-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
+|-- input.raw                 # 256x256 grayscale test image
+|-- LICENSE
+|-- .gitignore
+`-- README.md
 
 ## Prerequisites
 
@@ -105,6 +162,33 @@ Run the RISC-V RVV binary under QEMU:
 ```bash
 make run_rvv ARGS="256 256 100"
 ```
+---
+
+## 🖼️ Pipeline Visual Verification
+
+The profiling harness isolates and outputs visual artifacts for each core mathematical stage of the Canny edge detection pipeline. Below is the sequential progression from the raw source data to the finalized edge map:
+
+### 1. Pre-Processing & Gradient Extraction
+| 01. Gaussian Blur | 02. Sobel Gradients (X / Y) | 03. Gradient Magnitude |
+| :---: | :---: | :---: |
+| ![Gaussian Blur](images/png/stage_01_blur.png) | ![Sobel X](images/png/stage_02_grad_x.png) | ![Magnitude](images/png/stage_03_magnitude.png) |
+| *Removes high-frequency noise.* | *Extracts spatial derivatives.* | *Maps total edge strength.* |
+
+### 2. Edge Thinning & Final Suppression
+| 04. Non-Maximum Suppression | 05. Double Thresholding | 06. Hysteresis (Final Output) |
+| :---: | :---: | :---: |
+| ![NMS](images/png/stage_04_nms.png) | ![Threshold](images/png/stage_05_threshold.png) | ![Final Output](images/png/stage_06_final.png) |
+| *Thins edges to 1-pixel lines.* | *Categorizes edge candidates.* | *Traces and cleans final edges.* |
+
+---
+
+### 📋 Output Stages Breakdown
+* **stage_01_blur.png** -> Gaussian Blur (noise reduction)
+* **stage_02_grad_x.png / grad_y.png** -> Sobel Gradients (directional derivatives)
+* **stage_03_magnitude.png** -> Gradient Magnitude (edge strength map)
+* **stage_04_nms.png** -> Non-Maximum Suppression (edge thinning)
+* **stage_05_threshold.png** -> Double Thresholding (edge categorization)
+* **stage_06_final.png** -> Hysteresis Tracing (final edge map)
 
 ## Correctness Verification
 

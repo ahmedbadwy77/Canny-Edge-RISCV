@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <climits>
 #include <vector>
+#include <filesystem>
 #include "../include/image_io.h"
 #include "../include/gaussian.h"
 #include "../include/sobel.h"
@@ -134,7 +135,7 @@ int main(int argc, char** argv) {
 // --- VERIFICATION PASS: Save images to disk ---
     std::cout << "\n--- Saving Pipeline Stages for Documentation ---\n";
 
-
+    std::filesystem::create_directories("images/raw");
     // 1. Blur
     gaussian_blur_scalar(input_buf, blurred_data.data(), width, height);
     write_raw_image("images/raw/stage_01_blur.raw", blurred_data.data(), width, height);
