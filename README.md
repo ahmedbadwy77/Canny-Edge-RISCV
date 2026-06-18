@@ -182,14 +182,6 @@ The profiling harness isolates and outputs visual artifacts for each core mathem
 
 ---
 
-### 📋 Output Stages Breakdown
-* **stage_01_blur.png** -> Gaussian Blur (noise reduction)
-* **stage_02_grad_x.png / grad_y.png** -> Sobel Gradients (directional derivatives)
-* **stage_03_magnitude.png** -> Gradient Magnitude (edge strength map)
-* **stage_04_nms.png** -> Non-Maximum Suppression (edge thinning)
-* **stage_05_threshold.png** -> Double Thresholding (edge categorization)
-* **stage_06_final.png** -> Hysteresis Tracing (final edge map)
-
 ## Correctness Verification
 
 The main correctness check compares the RISC-V scalar output against the RISC-V RVV output using the same QEMU CPU configuration:
