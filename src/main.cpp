@@ -131,7 +131,42 @@ int main(int argc, char** argv) {
         t_hyst += std::chrono::duration<double, std::milli>(e - s).count();
     }
 
+// --- VERIFICATION PASS: Save images to disk ---
+    std::cout << "\n--- Saving Pipeline Stages for Documentation ---\n";
+
+
+    // 1. Blur
+    gaussian_blur_scalar(input_buf, blurred_data.data(), width, height);
+    write_raw_image("images/raw/stage_01_blur.raw", blurred_data.data(), width, height);
+
+    // 2. Sobel
+    sobel_gradients_scalar(blurred_data.data(), grad_x.data(), grad_y.data(), width, height);
+    write_raw_image("images/raw/stage_02_grad_x.raw", (uint8_t*)grad_x.data(), width, height);
+    write_raw_image("images/raw/stage_02_grad_y.raw", (uint8_t*)grad_y.data(), width, height);
+
+    // 3. Magnitude
+    gradient_magnitude_scalar(grad_x.data(), grad_y.data(), magnitude_data.data(), width, height, MagMethod::L1);
+    write_raw_image("images/raw/stage_03_magnitude.raw", magnitude_data.data(), width, height);
+
+    // 4. NMS
+    non_max_suppression(magnitude_data.data(), direction_data.data(), nms_data.data(), width, height);
+    write_raw_image("images/raw/stage_04_nms.raw", nms_data.data(), width, height);
+
+    // 5. Threshold
+    uint8_t low, high;
+    auto_threshold(nms_data.data(), size, low, high);
+    double_threshold(nms_data.data(), threshold_data.data(), width, height, low, high);
+    write_raw_image("images/raw/stage_05_threshold.raw", threshold_data.data(), width, height);
+
+    // 6. Final
+    hysteresis_tracing(threshold_data.data(), width, height);
+    write_raw_image("images/raw/stage_06_final.raw", threshold_data.data(), width, height);
+
+    std::cout << "All raw stages saved to images/raw/!\n";
+
+    // Now print your timing results
     double total = t_gauss + t_sobel + t_mag + t_dir + t_nms + t_thresh + t_hyst;
+    // ... [rest of your profiling print statements] ...
     std::cout << "\n--- Phase 6: Profiling ---\n";
 #if defined(__riscv_vector)
     std::cout << "Mode:            RISC-V RVV\n";
@@ -151,11 +186,6 @@ int main(int argc, char** argv) {
     std::cout << "Thresholding:    " << (t_thresh/total)*100 << "% (" << t_thresh << " ms)\n";
     std::cout << "Hysteresis:      " << (t_hyst/total)*100 << "% (" << t_hyst << " ms)\n";
     std::cout << "Total Time:      " << total << " ms\n";
-
-    if (!write_raw_image("output.raw", threshold_data.data(), width, height)) {
-        std::free(input_buf);
-        return 1;
-    }
 
     std::free(input_buf);
 
