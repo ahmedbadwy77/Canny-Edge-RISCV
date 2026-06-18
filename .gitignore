@@ -16,3 +16,5 @@ rv_scalar
 output.raw
 scalar_output.raw
 rvv_output.raw
+images/raw/
+images/png/
