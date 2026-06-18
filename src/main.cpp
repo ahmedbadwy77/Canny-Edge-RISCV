@@ -187,11 +187,6 @@ int main(int argc, char** argv) {
     std::cout << "Hysteresis:      " << (t_hyst/total)*100 << "% (" << t_hyst << " ms)\n";
     std::cout << "Total Time:      " << total << " ms\n";
 
-    // if (!write_raw_image("output.raw", threshold_data.data(), width, height)) {
-    //     std::free(input_buf);
-    //     return 1;
-    // }
-
     std::free(input_buf);
 
     return 0;
