@@ -1,58 +1,3 @@
-# RISC-V Canny Edge Detection Pipeline 🚀
-
-![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
-![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
-![RVV](https://img.shields.io/badge/RVV-1.0-purple.svg)
-![QEMU](https://img.shields.io/badge/QEMU-user--mode-lightgrey.svg)
-![GoogleTest](https://img.shields.io/badge/Testing-GoogleTest-green.svg)
-![Tests](https://img.shields.io/badge/tests-34%20passed-brightgreen.svg)
-![VLEN](https://img.shields.io/badge/VLEN-128%20%7C%20256%20%7C%20512-blueviolet.svg)
-![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
-
-A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
-
-## Features
-
-- Complete Canny pipeline:
-  Gaussian Blur, Sobel Gradients, Magnitude, Direction Quantization, Non-Maximum Suppression, Double Thresholding, and Hysteresis.
-- Native host scalar build for development and unit testing.
-- RISC-V scalar build using `rv64gc`.
-- RISC-V RVV build using `rv64gcv`.
-- RVV implementations for Gaussian Blur, Sobel, Magnitude, Direction, and NMS.
-- Bit-exact verification between RISC-V scalar output and RISC-V RVV output.
-- GoogleTest test suite with 34 passing tests.
-
-## Repository Structure
-
-```text
-.
-|-- assets/
-|   `-- final_edges.png       # Example edge-detection output
-|-- docs/
-|   `-- RISCV_Canny_Documentation_v4.pdf
-|-- include/                  # Pipeline headers
-|   |-- gaussian.h            # Gaussian Blur, scalar + RVV
-|   |-- sobel.h               # Sobel Gradients, scalar + RVV
-|   |-- magnitude.h           # Gradient Magnitude, scalar + RVV
-|   |-- direction.h           # Direction Quantization, scalar + RVV
-|   |-- nms.h                 # Non-Maximum Suppression, scalar + RVV
-|   |-- threshold.h           # Double Thresholding
-|   |-- hysteresis.h          # Hysteresis Edge Tracing
-|   `-- image_io.h            # Raw image I/O interface
-|-- src/
-|   |-- main.cpp              # Pipeline entry point and timing harness
-|   |-- image_io.cpp          # Raw image load/save implementation
-|   `-- generate.cpp          # Optional one-shot output generator
-|-- tests/
-|   `-- test_pipeline.cpp     # GoogleTest unit and integration tests
-|-- tools/                    # Utility scripts
-|   |-- fix_image.py          # Image preprocessing utility
-|   `-- view.py               # Visualize raw output
-|-- Makefile                  # Host, RISC-V scalar, and RISC-V RVV targets
-|-- input.raw                 # 256x256 grayscale test image
-|-- LICENSE
-|-- .gitignore
-`-- README.md
 ```# RISC-V Canny Edge Detection Pipeline 🚀
 
 ![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
@@ -65,6 +10,7 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 ![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
 A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
+
 
 ## Features
 
