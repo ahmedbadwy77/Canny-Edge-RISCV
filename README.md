@@ -1,4 +1,4 @@
-```# RISC-V Canny Edge Detection Pipeline 🚀
+# RISC-V Canny Edge Detection Pipeline 🚀
 
 ![C++](https://img.shields.io/badge/language-C%2B%2B-blue.svg)
 ![RISC-V](https://img.shields.io/badge/Architecture-RISC--V-orange.svg)
@@ -10,7 +10,6 @@
 ![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
 A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V Vector (RVV) code paths. The project targets RV64GC/RV64GCV builds and uses QEMU user-mode emulation for functional verification.
-
 
 ## Features
 
