@@ -52,6 +52,7 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |-- input.raw                 # 256x256 grayscale test image
 |-- LICENSE
 |-- .gitignore
+<<<<<<< HEAD
 `-- README.md
 ```# RISC-V Canny Edge Detection Pipeline 🚀
 
@@ -111,6 +112,9 @@ A C++ implementation of the Canny Edge Detection pipeline with scalar and RISC-V
 |-- LICENSE
 |-- .gitignore
 `-- README.md
+=======
+```
+>>>>>>> 86c356cbe9e15a4c93d331dea743ed321014af85
 
 ## Prerequisites
 
