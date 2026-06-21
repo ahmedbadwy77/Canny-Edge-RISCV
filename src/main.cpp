@@ -132,6 +132,14 @@ int main(int argc, char** argv) {
         t_hyst += std::chrono::duration<double, std::milli>(e - s).count();
     }
 
+bool save_enabled = true;
+for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--nosave") {
+        save_enabled = false;
+    }
+}
+if (save_enabled) {
+
 // --- VERIFICATION PASS: Save images to disk ---
     std::cout << "\n--- Saving Pipeline Stages for Documentation ---\n";
 
@@ -164,7 +172,7 @@ int main(int argc, char** argv) {
     write_raw_image("images/raw/stage_06_final.raw", threshold_data.data(), width, height);
 
     std::cout << "All raw stages saved to images/raw/!\n";
-
+}
     // Now print your timing results
     double total = t_gauss + t_sobel + t_mag + t_dir + t_nms + t_thresh + t_hyst;
     // ... [rest of your profiling print statements] ...

@@ -116,12 +116,14 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 
 ### Overall Optimization Summary
 
-| Build Type   | Flags                          | VLEN | Runtime (ms) | Binary Size  | Speedup vs -O0 |
-|--------------|--------------------------------|------|-------------|--------------|----------------|
-| Scalar -O0   | `-O0`                          | —    | 6,535.62    | 1,213 KB     | 1.0×           |
-| Scalar -O2   | `-O2`                          | —    | 631.77      | 1,184 KB     | 10.3×          |
-| Scalar -Ofast| `-Ofast`                       | —    | 875.67      | 1,188 KB     | 7.5×           |
-| RVV -O3      | `-O3 -march=rv64gcv -mabi=lp64d` | 128 | 882.62    | 1,188 KB     | 7.4×           |
+| Build Type   | Flags                          | VLEN | Runtime (ms) | Binary Size  | Speedup vs -O0   |
+|--------------|--------------------------------|------|-------------|--------------|-------------------|
+| Scalar -O0   | `-O0`                          | —    | 9,414.03    | 612,251 B     | 1.0×             |
+| Scalar -O2   | `-O2`                          | —    | 5,888.67    | 596929 B      | 1.6×             |
+| Scalar -Ofast| `-Ofast`                       | —    | 5962.0      | 601877 B      | 1.58×            |
+| Scalar -Os   |  -Os                           | --   | 5771.6      | 594777 B      | 1.63x            |
+| scalar -O3   |  -O3                           | --   | 5614.9      | 601921 B      | 1.67x            |
+| RVV -O3      | `-O3 -march=rv64gcv -mabi=lp64d` | 128 | 659.78     | 597,167 B     | 14.27×           |
 
 > **Note on QEMU timing:** QEMU is not cycle-accurate and does not model vector execution units.
 > Wall-clock time on QEMU does not reflect real hardware speedup. On actual RISC-V silicon,
@@ -143,9 +145,21 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 | Hysteresis     | 110.26     | 1.17%      |
 | **Total**      | **9,414.03** | **100%** |
 
-> **Hotspot identification:** Gaussian (58%) + Sobel (28%) = **86% of total runtime**.
-> This is where we focused RVV optimization effort — Amdahl's Law in practice.
-> Direction (0.22%) was not worth vectorizing for performance; RVV added there for completeness only.
+---
+
+### Stage Breakdown at -Os (Scalar)
+
+| Stage          | Time (ms) | Percentage |
+|----------------|-----------|------------|
+| Gaussian Blur  | 2438.41   | 42.25%     |
+| Sobel Gradients| 945.63    | 16.38%     |
+| Magnitude      | 563.66    | 9.77%      |
+| Direction      | 768.82    | 13.32%     |
+| NMS            | 928.33    | 16.08%     |
+| Thresholding   | 63.25     | 1.10%      |
+| Hysteresis     | 63.50     | 1.10%      |
+| **Total**      | **5771.60** | **100%** |
+
 
 ---
 
@@ -153,13 +167,13 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 
 | Stage          | Time (ms) | Percentage |
 |----------------|-----------|------------|
-| Gaussian Blur  | 334.90    | 53.01%     |
-| Sobel Gradients| 153.23    | 24.25%     |
-| Magnitude      | 68.57     | 10.85%     |
-| Direction      | 5.53      | 0.88%      |
-| NMS            | 6.07      | 0.96%      |
-| Thresholding   | 30.79     | 4.87%      |
-| Hysteresis     | 32.68     | 5.17%      |
+| Gaussian Blur  | 2744.71   | 46.61%     |
+| Sobel Gradients| 849.79    | 14.43%     |
+| Magnitude      | 503.57    | 8.55%      |
+| Direction      | 747.6     | 12.7%      |
+| NMS            | 806.67    | 13.7%      |
+| Thresholding   | 80.80     | 1.37%      |
+| Hysteresis     | 155.52    | 2.64%      |
 | **Total**      | **631.77** | **100%** |
 
 > **-O2 gives a free 10.3× speedup** with no code changes. The compiler auto-vectorized
@@ -172,18 +186,31 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 
 | Stage          | Time (ms) | Percentage |
 |----------------|-----------|------------|
-| Gaussian Blur  | 363.84    | 41.55%     |
-| Sobel Gradients| 153.97    | 17.58%     |
-| Magnitude      | 61.00     | 6.97%      |
-| Direction      | 5.61      | 0.64%      |
-| NMS            | 233.70    | 26.69%     |
-| Thresholding   | 28.35     | 3.24%      |
-| Hysteresis     | 29.20     | 3.33%      |
-| **Total**      | **875.67** | **100%** |
+| Gaussian Blur  | 2574.13   | 43.18%     |
+| Sobel Gradients| 874.78    | 14.67%     |
+| Magnitude      | 509.90    | 8.55%      |
+| Direction      | 737.11    | 12.36%     |
+| NMS            | 849.67    | 14.25%     |
+| Thresholding   | 254.39    | 4.27%      |
+| Hysteresis     | 162.01    | 2.72%      |
+| **Total**      | **5962.00** | **100%** |
+.
 
-> **-Ofast is slower than -O2** (875ms vs 632ms). The NMS stage jumped from 0.96% to 26.69%
-> because aggressive floating-point reassociation changed the branch behavior in NMS,
-> making it slower despite less strict IEEE compliance.
+---
+
+### Stage Breakdown at -Os (Scalar)
+
+| Stage          | Time (ms) | Percentage |
+|----------------|-----------|------------|
+| Gaussian Blur  | 2379.43   | 42.38%     |
+| Sobel Gradients| 821.13    | 14.62%     |
+| Magnitude      | 497.80    | 8.87%      |
+| Direction      | 738.83    | 13.16%     |
+| NMS            | 798.69    | 14.22%     |
+| Thresholding   | 235.58    | 4.20%      |
+| Hysteresis     | 143.47    | 2.56%      |
+| **Total**      | **5614.94** | **100%** |
+
 
 ---
 
@@ -359,40 +386,6 @@ Run:
 
 ```bash
 make benchmark ARGS="256 256 100"
-```
-
-Latest QEMU benchmark using a 256x256 image and 100 iterations:
-
-### RISC-V Scalar
-
-```text
-Mode:            RISC-V Scalar
-Size:            256x256
-Iterations:      100
-Gaussian Blur:   38.11% (136.88 ms)
-Sobel Gradients: 13.56% (48.71 ms)
-Magnitude:       7.57% (27.19 ms)
-Direction:       11.34% (40.75 ms)
-NMS:             12.98% (46.63 ms)
-Thresholding:    6.17% (22.17 ms)
-Hysteresis:      10.26% (36.87 ms)
-Total Time:      359.20 ms
-```
-
-### RISC-V RVV
-
-```text
-Mode:            RISC-V RVV
-Size:            256x256
-Iterations:      100
-Gaussian Blur:   46.63% (1095.64 ms)
-Sobel Gradients: 15.44% (362.72 ms)
-Magnitude:       8.59% (201.92 ms)
-Direction:       12.11% (284.65 ms)
-NMS:             14.58% (342.63 ms)
-Thresholding:    0.97% (22.70 ms)
-Hysteresis:      1.68% (39.43 ms)
-Total Time:      2349.70 ms
 ```
 
 ## Important Note About QEMU Timing
