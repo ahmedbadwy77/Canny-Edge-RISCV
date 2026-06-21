@@ -134,14 +134,14 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 
 | Stage          | Time (ms)  | Percentage |
 |----------------|------------|------------|
-| Gaussian Blur  | 3,800.60   | 58.15%     |
-| Sobel Gradients| 1,808.04   | 27.66%     |
-| Magnitude      | 750.37     | 11.48%     |
-| Direction      | 14.41      | 0.22%      |
-| NMS            | 15.42      | 0.24%      |
-| Thresholding   | 10.77      | 0.16%      |
-| Hysteresis     | 136.01     | 2.08%      |
-| **Total**      | **6,535.62** | **100%** |
+| Gaussian Blur  | 7,437.91   | 79.01%     |
+| Sobel Gradients| 1,292.12   | 13.73%     |
+| Magnitude      | 545.42     | 5.79%     |
+| Direction      | 9.76      | 0.1%      |
+| NMS            | 10.75      | 0.11%      |
+| Thresholding   | 7.82      | 0.08%      |
+| Hysteresis     | 110.26     | 1.17%      |
+| **Total**      | **9,414.03** | **100%** |
 
 > **Hotspot identification:** Gaussian (58%) + Sobel (28%) = **86% of total runtime**.
 > This is where we focused RVV optimization effort — Amdahl's Law in practice.
@@ -189,22 +189,75 @@ All benchmarks run on QEMU (`qemu-riscv64`) with a **256×256** grayscale image,
 
 ### Stage Breakdown at -O3 with RVV Intrinsics (VLEN=128)
 
-| Stage          | Time (ms) | Percentage | Implementation |
-|----------------|-----------|------------|----------------|
-| Gaussian Blur  | 360.14    | 40.80%     | ✅ RVV          |
-| Sobel Gradients| 153.13    | 17.35%     | ✅ RVV          |
-| Magnitude      | 67.26     | 7.62%      | ✅ RVV          |
-| Direction      | 5.34      | 0.61%      | ✅ RVV          |
-| NMS            | 235.97    | 26.74%     | Scalar          |
-| Thresholding   | 27.16     | 3.08%      | Scalar          |
-| Hysteresis     | 33.63     | 3.81%      | Scalar          |
-| **Total**      | **882.62** | **100%** |                |
+| Stage          | Time (ms) | Percentage |
+|----------------|-----------|------------|
+| Gaussian Blur  | 280.73    | 42.55%     |
+| Sobel Gradients| 106.89    | 16.20%     |
+| Magnitude      | 43.05     | 6.52%      |
+| Direction      | 4.37      | 0.66%      |
+| NMS            | 179.97    | 27.28%     |
+| Thresholding   | 20.68     | 3.13%      |
+| Hysteresis     | 24.10     | 3.65%      |
+| **Total**      |**659.78** | **100%**   | 
 
-> **Workload distribution shift:** After vectorizing Gaussian and Sobel, NMS became the
-> new dominant stage (26.74%). This is the classic Amdahl's Law effect — optimizing
-> the hotspot reveals the next bottleneck. On real RISC-V hardware, the RVV kernels
-> would show dramatic speedup; NMS (branch-heavy, data-dependent) would then be the
-> clear next optimization target.
+### Stage Breakdown at RVV O3 (VLEN=256)
+
+| Stage          | Time (ms) | Percentage |
+|----------------|-----------|------------|
+| Gaussian Blur  | 239.47    | 37.45%     |
+| Sobel Gradients| 176.53    | 27.61%     |
+| Magnitude      | 40.86     | 6.39%      |
+| Direction      | 4.18      | 0.65%      |
+| NMS            | 135.56    | 21.20%     |
+| Thresholding   | 19.79     | 3.09%      |
+| Hysteresis     | 23.04     | 3.60%      |
+| **Total**      |**639.44** |**100%**    |
+
+
+### Stage Breakdown at RVV O3 (VLEN=512)
+
+| Stage          | Time (ms) | Percentage |
+|----------------|-----------|------------|
+| Gaussian Blur  | 247.62    | 29.74%     |
+| Sobel Gradients| 339.27    | 40.75%     |
+| Magnitude      | 40.71     | 4.89%      |
+| Direction      | 4.39      | 0.53%      |
+| NMS            | 142.80    | 17.15%     |
+| Thresholding   | 27.50     | 3.30%      |
+| Hysteresis     | 30.35     | 3.64%      |
+| **Total**      |**832.63** | **100%**   |
+
+
+### Final Optimization Summary (Phase 7)
+
+| Build Type | Flags | VLEN | Runtime (ms) | Binary Size | Speedup vs O0 |
+|------------|-------|------|--------------|-------------|---------------|
+| Scalar O0  | -O0   | —    | 9414.03      | 612,251 B   | 1.0×          |
+| RVV O3     | -O3   | 128  | 659.78       | 597,167 B   | 14.3×         |
+| RVV O3     | -O3   | 256  | 639.44       | 597,167 B   | 14.7×         |
+| RVV O3     | -O3   | 512  | 832.63       | 597,167 B   | 11.3×         |
+
+
+### RVV Intrinsic Annotations
+
+- __riscv_vsetvl_e16m4 → Sets vector length for 16‑bit elements (VLEN‑agnostic strip‑mining).
+
+- __riscv_vle16_v_i16m4 → Loads 16‑bit pixels into vector registers (bulk memory access).
+
+- __riscv_vwmaccu_vx_u32m4 → Widening multiply‑accumulate (prevents overflow in Gaussian/Sobel).
+
+- __riscv_vabs_v_i16m4 → Absolute value per element (needed for |Gx| + |Gy|).
+
+- __riscv_vadd_vv_u16m4 → Vector addition (combine gradients).
+
+- __riscv_vmax_vv_u32m1 → Element‑wise max (used in reduction for global max).
+
+- __riscv_vmv_x_s_u32m1_u32 → Extract scalar from vector (final reduction step).
+
+- __riscv_vmslt_vv_i16m4_b16 → Mask compare (gradient direction classification).
+
+- __riscv_vmerge_vvm_u8m1 → Masked merge (thresholding/hysteresis decisions).
+
 
 ---
 
